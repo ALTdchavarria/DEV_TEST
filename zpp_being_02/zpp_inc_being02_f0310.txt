@@ -1,0 +1,392 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPP_INC_BEING01_F0310
+*&---------------------------------------------------------------------*
+
+*--------------------------------------------------------------------*
+*& Validación IFRA
+
+FORM popup_ifra_process TABLES pit_stpo         STRUCTURE zest_prifra
+                               pit_ifra_mp      STRUCTURE zest_prifra_collect_mp
+                               pit_ifra_fam     STRUCTURE zest_prifra_collect_fam
+                               pit_nlis         STRUCTURE zest_prifra_collect_mp
+                        USING  VALUE(i_ifraval) LIKE zstr_ifravalues.
+
+  DATA: lt_stpo TYPE TABLE OF zest_prifra,
+        td_stpo TYPE TABLE OF zest_prifra,
+        wa_nlis TYPE zest_prifra_collect_mp,
+        wa_stpo TYPE zest_prifra,
+        ls_stpo TYPE zest_prifra,
+        ld_stpo TYPE zest_prifra,
+        v_matnr  TYPE matnr,
+        s_maktx  LIKE makt-maktx,
+        v_mnglg  TYPE c LENGTH 13.
+
+  DATA: wa_ifra_fam     TYPE zest_prifra_collect_fam,
+        wa_ifra_fam_val TYPE zest_prifra_collect_fam,
+        wa_fam_ifra     TYPE zfam_ifra.
+
+  DATA: v_field     TYPE c LENGTH 25,
+        v_fieldtxt  TYPE c LENGTH 25,
+        v_whereop   TYPE string,
+        v_dosdes    TYPE p DECIMALS 4,
+        v_dosistxt  TYPE c LENGTH 15.
+
+  FIELD-SYMBOLS: <fs_class>, <fs_field>, <fs_classtxt>.
+
+  CLEAR v_matnr.
+  REFRESH it_line.
+  IF NOT pit_nlis[] IS INITIAL.
+    lt_stpo[] = pit_stpo[].
+
+    LOOP AT pit_nlis INTO wa_nlis.
+      CLEAR wa_line.
+      IF wa_nlis-val_ifra IS INITIAL.
+        CONCATENATE cl_abap_char_utilities=>cr_lf
+                    'El desarrollo no cumple con la norma IFRA debido a que el material no está listado:'
+                    wa_nlis-matnr
+               INTO wa_line SEPARATED BY space.
+        APPEND wa_line TO it_line.
+        wa_line = 'Dirijase al área de Calidad para mayor información'.
+      ELSE.
+        CONCATENATE cl_abap_char_utilities=>cr_lf
+                    'El desarrollo no cumple con la norma IFRA debido a que el material no tiene datos IFRA:'
+                    wa_nlis-matnr
+               INTO wa_line SEPARATED BY space.
+        APPEND wa_line TO it_line.
+        wa_line = 'Canalice al área de Calidad para introducir datos IFRA en el sistema'.
+      ENDIF.
+      APPEND wa_line TO it_line.
+    ENDLOOP.
+
+    LOOP AT pit_nlis INTO wa_nlis WHERE val_ifra = 'PROHIBIDO'.
+      IF v_matnr <> wa_nlis-matnr.
+        CLEAR wa_line.
+        CONCATENATE 'El desarrollo no cumple con la norma IFRA debido a que el material está PROHIBIDO por IFRA:'
+                    wa_nlis-matnr
+               INTO wa_line SEPARATED BY space.
+        APPEND wa_line TO it_line.
+*Busca los padre de cada componente (material) que no cumple
+        LOOP AT pit_stpo INTO wa_stpo WHERE matnr = wa_nlis-matnr..
+          CLEAR ls_stpo.
+          s_maktx = wa_stpo-ojtxb.
+          WHILE ls_stpo-ojtxb <> wa_ifraval-maktx.
+            READ TABLE lt_stpo INTO ls_stpo WITH KEY ojtxp = s_maktx.
+            IF ls_stpo-ojtxb <> wa_ifraval-maktx.
+              IF s_maktx =  wa_ifraval-maktx.
+                EXIT.
+              ENDIF.
+              s_maktx = ls_stpo-ojtxb.
+            ENDIF.
+          ENDWHILE.
+          CLEAR: wa_line, v_mnglg.
+          IF sy-subrc <> 0.
+            v_mnglg = wa_stpo-mnglg.
+            CONCATENATE cl_abap_char_utilities=>cr_lf
+                        'Incluido en la materia prima:' wa_stpo-matnr
+                        wa_stpo-ojtxp
+                        'Dosificación utilizada:' v_mnglg
+                   INTO wa_line SEPARATED BY space.
+          ELSE.
+            v_mnglg = ls_stpo-mnglg.
+            CONCATENATE cl_abap_char_utilities=>cr_lf
+                        'Incluido en la materia prima:' ls_stpo-matnr
+                        ls_stpo-ojtxp
+                        'Dosificación utilizada:' v_mnglg
+                   INTO wa_line SEPARATED BY space.
+          ENDIF.
+          APPEND wa_line TO it_line.
+
+        ENDLOOP.
+      ENDIF.        "<< matnr <> nlis_matnr ?
+      v_matnr = wa_nlis-matnr.
+    ENDLOOP.        "<< PROHIBIDO
+  ELSE.
+*1
+    CLEAR wa_ifra_fam_val.
+    SORT pit_ifra_fam BY class1 ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class1 = wa_ifra_fam-class1.
+    ENDIF.
+*2
+    SORT pit_ifra_fam BY class2 ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class2 = wa_ifra_fam-class2.
+    ENDIF.
+*3
+*    SORT pit_ifra_fam BY class_3 ASCENDING.
+*    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+*    IF sy-subrc = 0.
+*      wa_ifra_fam_val-class_3 = wa_ifra_fam-class_3.
+*    ENDIF.
+*3A
+    SORT pit_ifra_fam BY class_3a ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_3a = wa_ifra_fam-class_3a.
+    ENDIF.
+*3B
+    SORT pit_ifra_fam BY class_3b ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_3b = wa_ifra_fam-class_3b.
+    ENDIF.
+*3C
+    SORT pit_ifra_fam BY class_3c ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_3c = wa_ifra_fam-class_3c.
+    ENDIF.
+*3D
+    SORT pit_ifra_fam BY class_3d ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_3d = wa_ifra_fam-class_3d.
+    ENDIF.
+*4
+*    SORT pit_ifra_fam BY class_4 ASCENDING.
+*    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+*    IF sy-subrc = 0.
+*      wa_ifra_fam_val-class_4 = wa_ifra_fam-class_4.
+*    ENDIF.
+*4A
+    SORT pit_ifra_fam BY class_4a ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_4a = wa_ifra_fam-class_4a.
+    ENDIF.
+*4B
+    SORT pit_ifra_fam BY class_4b ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_4b = wa_ifra_fam-class_4b.
+    ENDIF.
+*4C
+    SORT pit_ifra_fam BY class_4c ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_4c = wa_ifra_fam-class_4c.
+    ENDIF.
+*4D
+    SORT pit_ifra_fam BY class_4d ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_4d = wa_ifra_fam-class_4d.
+    ENDIF.
+*5
+    SORT pit_ifra_fam BY class_5 ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_5 = wa_ifra_fam-class_5.
+    ENDIF.
+*6
+    SORT pit_ifra_fam BY class_6 ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_6 = wa_ifra_fam-class_6.
+    ENDIF.
+*7A
+    SORT pit_ifra_fam BY class_7a ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_7a = wa_ifra_fam-class_7a.
+    ENDIF.
+*7B
+    SORT pit_ifra_fam BY class_7b ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_7b = wa_ifra_fam-class_7b.
+    ENDIF.
+*8A
+    SORT pit_ifra_fam BY class_8a ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_8a = wa_ifra_fam-class_8a.
+    ENDIF.
+*8B
+    SORT pit_ifra_fam BY class_8b ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_8b = wa_ifra_fam-class_8b.
+    ENDIF.
+*9A
+    SORT pit_ifra_fam BY class_9a ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_9a = wa_ifra_fam-class_9a.
+    ENDIF.
+*9B
+    SORT pit_ifra_fam BY class_9b ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_9b = wa_ifra_fam-class_9b.
+    ENDIF.
+*9C
+    SORT pit_ifra_fam BY class_9c ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_9c = wa_ifra_fam-class_9c.
+    ENDIF.
+*10A
+    SORT pit_ifra_fam BY class_10a ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_10a = wa_ifra_fam-class_10a.
+    ENDIF.
+*10B
+    SORT pit_ifra_fam BY class_10b ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_10b = wa_ifra_fam-class_10b.
+    ENDIF.
+*11
+    SORT pit_ifra_fam BY class_11 ASCENDING.
+    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+    IF sy-subrc = 0.
+      wa_ifra_fam_val-class_11 = wa_ifra_fam-class_11.
+    ENDIF.
+
+*    SORT pit_ifra_fam BY class_11b ASCENDING.
+*    READ TABLE pit_ifra_fam INTO wa_ifra_fam INDEX 1.
+*    IF sy-subrc = 0.
+*      wa_ifra_fam_val-class_11b = wa_ifra_fam-class_11b.
+*    ENDIF.
+
+    CLEAR v_field.
+    CONCATENATE 'WA_IFRA_FAM_VAL-' i_ifraval-clase INTO v_field.
+    ASSIGN (v_field) TO <fs_class>.
+*--------------------------------------------------------------------*
+    SORT pit_ifra_fam BY (i_ifraval-clase).
+    LOOP AT pit_ifra_fam INTO wa_ifra_fam.
+      IF <fs_class> < i_ifraval-pct.
+        CLEAR: v_field, v_fieldtxt, v_mnglg.
+        CONCATENATE 'WA_IFRA_FAM-' i_ifraval-clase INTO v_field.
+        ASSIGN (v_field) TO <fs_class>.
+        v_field = <fs_class>.
+        v_mnglg = i_ifraval-pct.
+
+        IF v_field < i_ifraval-pct.
+          SHIFT v_field LEFT DELETING LEADING space.
+          SHIFT v_mnglg LEFT DELETING LEADING space.
+          CLEAR wa_line.
+          CONCATENATE 'El desarrollo' i_ifraval-matnr 'no cumple con el requerimiento del cliente, debido a que el porcentaje máximo'
+                 INTO wa_line SEPARATED BY space.
+          APPEND wa_line TO it_line.
+          CLEAR wa_line.
+          CONCATENATE 'de dosificación IFRA para la' i_ifraval-clase 'debe ser máximo:' v_field '%.' "cl_abap_char_utilities=>cr_lf
+                 INTO wa_line SEPARATED BY space.
+          APPEND wa_line TO it_line.
+          CONCATENATE cl_abap_char_utilities=>cr_lf
+                      'Porcentaje que es menor al' v_mnglg '% que requiere utilizar el cliente en su fórmula.' "cl_abap_char_utilities=>cr_lf
+                 INTO wa_line SEPARATED BY space.
+          APPEND wa_line TO it_line.
+
+*          READ TABLE pit_ifra_fam
+*          LOOP AT .
+*
+*          ENDLOOP.
+          CONCATENATE 'WA_IFRA_FAM-' i_ifraval-clase INTO v_field.
+*Calcular el monto de gramos que debe tener para cumplir con la dosificación de cliente
+          CLEAR: wa_fam_ifra, v_matnr.
+          SELECT SINGLE * INTO wa_fam_ifra FROM zfam_ifra WHERE znom_fam = wa_ifra_fam-fam_ifra.
+          CONCATENATE 'WA_FAM_IFRA-' i_ifraval-clase INTO v_fieldtxt.
+          ASSIGN (v_fieldtxt) TO <fs_classtxt>.
+          v_dosdes   = <fs_classtxt> / i_ifraval-pct * i_ifraval-menge.
+          v_dosistxt = v_dosdes.
+          SHIFT v_dosistxt LEFT DELETING LEADING space.
+          v_mnglg = wa_ifra_fam-mngko.
+          SHIFT v_mnglg LEFT DELETING LEADING space.
+
+          CONCATENATE cl_abap_char_utilities=>cr_lf
+                      'Dosis máxima: ' v_dosistxt 'G, actualmente es de:' v_mnglg 'G' "cl_abap_char_utilities=>cr_lf
+                 INTO wa_line SEPARATED BY space.
+          APPEND wa_line TO it_line.
+
+          CONCATENATE '--------------------------------------------------'
+                      '--------------------------------------------------'
+                      '--------------------------------------------------'
+                      '--------------------------------------------------'
+                      "'--------------------------------------------------' cl_abap_char_utilities=>cr_lf
+                 INTO wa_line.
+          APPEND wa_line TO it_line.
+
+          lt_stpo[] = pit_stpo[].
+          LOOP AT pit_stpo INTO wa_stpo WHERE fam_ifra = wa_ifra_fam-fam_ifra.
+*Para sacar solo los materiales que no cumplen.
+            READ TABLE td_stpo INTO ls_stpo WITH KEY matnr = wa_stpo-matnr.
+            IF sy-subrc <> 0.
+              READ TABLE lt_stpo INTO ls_stpo WITH KEY matnr = wa_stpo-matnr.
+              APPEND ls_stpo TO td_stpo.
+            ENDIF.
+            v_matnr = wa_stpo-matnr.
+            CLEAR ls_stpo.
+          ENDLOOP.
+
+          LOOP AT td_stpo INTO ld_stpo.
+            READ TABLE pit_ifra_mp INTO wa_nlis WITH KEY matnr = ld_stpo-matnr.
+            READ TABLE lt_stpo INTO ls_stpo WITH KEY matnr = ld_stpo-matnr.
+            CLEAR wa_line.
+            v_mnglg = wa_nlis-mngko.
+            SHIFT v_mnglg LEFT DELETING LEADING space.
+            CONCATENATE "cl_abap_char_utilities=>horizontal_tab
+                        cl_abap_char_utilities=>backspace
+                        ld_stpo-matnr ls_stpo-ojtxp 'Dosificación: ' v_mnglg 'G'
+                   INTO wa_line SEPARATED BY space.
+            APPEND wa_line TO it_line.
+*Busca los padre de cada componente (material) que no cumple
+            LOOP AT pit_stpo INTO wa_stpo WHERE matnr = ld_stpo-matnr.
+              CLEAR ls_stpo-ojtxb.
+              s_maktx = wa_stpo-ojtxb.
+              WHILE ls_stpo-ojtxb <> i_ifraval-maktx.
+                READ TABLE lt_stpo INTO ls_stpo WITH KEY ojtxp = s_maktx.
+                IF ls_stpo-ojtxb <> i_ifraval-maktx.
+                  IF s_maktx = i_ifraval-maktx.
+                    EXIT.
+                  ENDIF.
+                  s_maktx = ls_stpo-ojtxb.
+                ENDIF.
+              ENDWHILE.
+              IF sy-subrc <> 0.
+                v_mnglg = wa_stpo-mnglg.
+                SHIFT v_mnglg LEFT DELETING LEADING space.
+                CONCATENATE cl_abap_char_utilities=>cr_lf
+                            "cl_abap_char_utilities=>backspace
+                            'Materia prima:' wa_stpo-matnr wa_stpo-ojtxp 'Dosificación utilizada:' v_mnglg
+                       INTO wa_line SEPARATED BY space.
+                APPEND wa_line TO it_line.
+              ELSE.
+                v_mnglg = ls_stpo-mnglg.
+                SHIFT v_mnglg LEFT DELETING LEADING space.
+                CONCATENATE cl_abap_char_utilities=>cr_lf
+                            "cl_abap_char_utilities=>backspace
+                            'Materia prima:' ls_stpo-matnr ls_stpo-ojtxp 'Dosificación utilizada:' v_mnglg
+                       INTO wa_line SEPARATED BY space.
+                APPEND wa_line TO it_line.
+              ENDIF.
+              CONCATENATE '--------------------------------------------------'
+                          '--------------------------------------------------'
+                          '--------------------------------------------------'
+                          '--------------------------------------------------'
+*                          '__________________________________________________' cl_abap_char_utilities=>cr_lf
+
+                     INTO wa_line.
+*              wa_line = ''.
+              APPEND wa_line TO it_line.
+            ENDLOOP.        "<< pit_stpo
+          ENDLOOP.        "<< td_stpo
+          REFRESH td_stpo.
+          wa_line = cl_abap_char_utilities=>cr_lf.
+          APPEND wa_line TO it_line.
+        ENDIF.        "<< v_field < pct ?
+      ENDIF.        "<< <fs_class> < pct ?
+    ENDLOOP.
+  ENDIF.        "<< pit_nlis[] INITIAL?
+  IF it_line[] IS INITIAL.
+    wa_line = 'El desarrollo SI cumple con la norma IFRA'.
+    APPEND wa_line TO it_line.
+  ENDIF.        "<< it_line initial?
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701

@@ -1,0 +1,383 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPP_INC_BEING01_PBO
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0100 OUTPUT.
+  PERFORM tx_100_btns_init_create.
+
+  SET PF-STATUS 'ST100' EXCLUDING it_funcod_excluding.
+  SET TITLEBAR 'TB100'.
+    CASE fld_enabled.
+      WHEN 1.
+*Enable M2
+        LOOP AT screen.
+          IF screen-name = 'MAT2-MATNR'.
+            screen-input = val_enabled.
+            IF mat2-matnr IS INITIAL.
+              CLEAR mat2.
+            ENDIF.
+          ENDIF.
+          MODIFY SCREEN.
+        ENDLOOP.
+      WHEN 2.
+*Enable M2, M3
+        LOOP AT screen.
+          IF screen-name = 'MAT2-MATNR' OR
+             screen-name = 'MAT3-MATNR'.
+            screen-input = val_enabled.
+          ENDIF.
+          MODIFY SCREEN.
+        ENDLOOP.
+    ENDCASE.
+ENDMODULE.                 " STATUS_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  INIT_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE INIT_0100 OUTPUT.
+  IF tx_mode IS INITIAL.
+    tx_mode = 'I'.
+
+    CLEAR: mat1, mat2, mat3, fld_enabled, val_enabled, ok_code,
+           v_okcode, tb_cmd, v_subrc, popup_answer, focus_bom,
+           cursor_field, cursor_line, error_code, wa_insmat,
+           wa_ifraval, tc_pos_col, tc_line, tc_line_aux,
+           bom_open, lst_item_no, zstr_tot.
+    REFRESH: it_zpp001, it_uaml, it_funcod_excluding,
+             it_stko_api02, it_stpo_api02, it_stas,
+             it_stpo, it_pos, it_ifra_stpo, it_ifra_mp,
+             it_ifra_fam, it_ifra_nlis, it_ifra_proh.
+
+    REFRESH CONTROL 'TC_POS' FROM SCREEN 300.
+
+    PERFORM create_image CHANGING gui_pic_container
+                                  gui_picture
+                                  gui_cndp_url.
+*Autorizaciones del usuario
+    PERFORM user_autho TABLES   it_zpp001
+                                it_uaml
+                       CHANGING wa_gpoaut.
+*Usuario SAP para soporte
+    PERFORM init_usrsop TABLES tran_usrsop.
+  ENDIF.        "<< tx initial?
+ENDMODULE.                 " INIT_0100  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  TC_ATTRIB  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE TC_ATTRIB OUTPUT.
+  "tc_pos-fixed_cols = 7.
+  DESCRIBE TABLE it_pos LINES tc_pos-lines.
+  IF tc_pos-lines = 0.
+    tc_pos-top_line = tc_pos-current_line = tc_pos-lines.
+  ENDIF.
+ENDMODULE.                 " TC_ATTRIB  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  TC_GET_LINES  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE TC_GET_LINES OUTPUT.
+* A)
+  tc_row_count = sy-loopc.
+*B)
+*  tc_pos-current_line = sy-loopc.
+ENDMODULE.                 " TC_GET_LINES  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  TC_SET_FIELDS  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE TC_SET_FIELDS OUTPUT.
+  IF tx_mode = 'D'.
+    LOOP AT SCREEN.
+      screen-input = 0.
+      MODIFY SCREEN.
+    ENDLOOP.
+  ELSEIF tx_mode = 'C' OR tx_mode = 'M'.
+    IF it_pos[] IS INITIAL.
+      LOOP AT SCREEN.
+        screen-input = 0.
+        IF screen-name = 'WA_POS-MENGE1'.
+          IF wa_pos-menge1 GT const_menge.
+            screen-intensified = 1.
+          ELSE.
+            screen-intensified = 0.
+          ENDIF.
+        ELSEIF screen-name = 'WA_POS-MENGE2'.
+          IF wa_pos-menge2 GT const_menge.
+            screen-intensified = 1.
+          ELSE.
+            screen-intensified = 0.
+          ENDIF.
+        ELSEIF screen-name = 'WA_POS-MENGE3'.
+          IF wa_pos-menge3 GT const_menge.
+            screen-intensified = 1.
+          ELSE.
+            screen-intensified = 0.
+          ENDIF.
+        ENDIF.        "<< menge #?
+        MODIFY SCREEN.
+      ENDLOOP.
+    ELSE.
+      IF wa_pos-posnr IS INITIAL.
+      "IF wa_pos-posnr IS INITIAL AND wa_pos-icon01 IS INITIAL.
+        IF wa_pos-icon01 IS INITIAL.
+          LOOP AT SCREEN.
+            IF ( ( screen-name = 'WA_POS-MENGE2' OR screen-name = 'WA_POS-MENGE3' ) AND focus_bom = '1' ) OR
+               ( ( screen-name = 'WA_POS-MENGE1' OR screen-name = 'WA_POS-MENGE3' ) AND focus_bom = '2' ) OR
+               ( ( screen-name = 'WA_POS-MENGE1' OR screen-name = 'WA_POS-MENGE2' ) AND focus_bom = '3' ).
+              screen-input = 0.
+            ENDIF.
+            MODIFY SCREEN.
+          ENDLOOP.
+        ELSE.
+          LOOP AT SCREEN.
+            IF ( ( screen-name = 'WA_POS-IDNRK' OR screen-name = 'WA_POS-MENGE1' OR
+                   screen-name = 'WA_POS-MENGE2' OR screen-name = 'WA_POS-MENGE3' OR
+                  screen-name = 'WA_POS-EXTWG') AND focus_bom = '1' ) OR
+               ( ( screen-name = 'WA_POS-MENGE1' OR screen-name = 'WA_POS-MENGE3' ) AND focus_bom = '2' ) OR
+               ( ( screen-name = 'WA_POS-MENGE1' OR screen-name = 'WA_POS-MENGE2' ) AND focus_bom = '3' ).
+              screen-input = 0.
+            ENDIF.
+            MODIFY SCREEN.
+          ENDLOOP.
+        ENDIF.        "<< icon01?
+      ELSE.
+        LOOP AT SCREEN.
+          IF screen-name = 'WA_POS-IDNRK' OR screen-name = 'WA_POS-EXTWG' OR
+             ( ( screen-name = 'WA_POS-MENGE2' OR screen-name = 'WA_POS-MENGE3' ) AND focus_bom = '1' ) OR
+             ( ( screen-name = 'WA_POS-MENGE1' OR screen-name = 'WA_POS-MENGE3' ) AND focus_bom = '2' ) OR
+             ( ( screen-name = 'WA_POS-MENGE1' OR screen-name = 'WA_POS-MENGE2' ) AND focus_bom = '3' ).
+            screen-input = 0.
+          ENDIF.
+          MODIFY SCREEN.
+        ENDLOOP.
+      ENDIF.        "<< posnr initial?
+    ENDIF.        "<< it[] initial?
+  ENDIF.        "<< tx_mode?
+ENDMODULE.                 " TC_SET_FIELDS  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0300  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0300 OUTPUT.
+  SET PF-STATUS 'ST300' EXCLUDING it_funcod_excluding.
+  CASE tx_mode.
+    WHEN 'D'.
+      SET TITLEBAR 'TT300' WITH ': Visualizar'.
+      PERFORM tb_buttons_invisible USING space 'TB_TOP'.
+      PERFORM tb_buttons_invisible USING space 'TB_PREV'.
+      PERFORM tb_buttons_invisible USING space 'TB_NEXT'.
+      PERFORM tb_buttons_invisible USING space 'TB_LAST'.
+      PERFORM tb_buttons_invisible USING space 'TB_SRTA'.
+      PERFORM tb_buttons_invisible USING space 'TB_SRTD'.
+      PERFORM tb_buttons_invisible USING 'X' 'TB_MARK'.
+      PERFORM tb_buttons_invisible USING 'X' 'TB_DMRK'.
+      PERFORM tb_buttons_invisible USING 'X' 'TB_INSR'.
+      PERFORM tb_buttons_invisible USING 'X' 'TB_DELR'.
+      PERFORM tb_buttons_invisible USING 'X' 'TB_CPYC'.
+    WHEN 'C' OR 'M'.
+      IF tx_mode = 'C'.
+        SET TITLEBAR 'TT300' WITH ': Crear'.
+      ELSE.
+        SET TITLEBAR 'TT300' WITH ': Modificar'.
+      ENDIF.
+      PERFORM tb_buttons_invisible USING space 'TB_TOP'.
+      PERFORM tb_buttons_invisible USING space 'TB_PREV'.
+      PERFORM tb_buttons_invisible USING space 'TB_NEXT'.
+      PERFORM tb_buttons_invisible USING space 'TB_LAST'.
+      PERFORM tb_buttons_invisible USING space 'TB_SRTA'.
+      PERFORM tb_buttons_invisible USING space 'TB_SRTD'.
+      PERFORM tb_buttons_invisible USING space 'TB_MARK'.
+      PERFORM tb_buttons_invisible USING space 'TB_DMRK'.
+      PERFORM tb_buttons_invisible USING space 'TB_INSR'.
+      PERFORM tb_buttons_invisible USING space 'TB_DELR'.
+      PERFORM tb_buttons_invisible USING space 'TB_DELR'.
+      IF focus_bom = '1'.
+        PERFORM tb_buttons_invisible USING 'X' 'TB_CPYC'.
+      ENDIF.
+  ENDCASE.
+ENDMODULE.                 " STATUS_0300  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  SET_CURSOR  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE SET_CURSOR_0300 OUTPUT.
+  IF tb_cmd = 'INSR'.
+    SET CURSOR FIELD 'WA_POS-IDNRK' LINE tc_line_aux.
+    CLEAR: tc_line_aux, tb_cmd.
+  ELSEIF tb_cmd = 'DELR'.
+    IF cursor_line > 1.
+      tc_line_aux = cursor_line - 1.
+    ELSE.
+      tc_line_aux = cursor_line.
+    ENDIF.
+    SET CURSOR FIELD 'WA_POS-IDNRK' LINE tc_line_aux.
+  ELSE.
+    CASE cursor_field.
+      WHEN 'WA_POS-IDNRK' OR 'WA_POS-EXTWG'.
+        IF focus_bom = 1.
+          SET CURSOR FIELD 'WA_POS-MENGE1' LINE cursor_line.
+          EXIT.
+        ENDIF.
+        IF focus_bom = 2.
+          SET CURSOR FIELD 'WA_POS-MENGE2' LINE cursor_line.
+        ENDIF.
+        IF focus_bom = 3.
+          SET CURSOR FIELD 'WA_POS-MENGE3' LINE cursor_line.
+        ENDIF.
+      WHEN OTHERS.
+        SET CURSOR FIELD cursor_field LINE cursor_line.
+    ENDCASE.
+  ENDIF.
+ENDMODULE.                 " SET_CURSOR  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0200 OUTPUT.
+  SET PF-STATUS 'ST200'.
+  SET TITLEBAR 'TT200'.
+ENDMODULE.                 " STATUS_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  INIT_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE INIT_0200 OUTPUT.
+  IF tx_mode_0200 IS INITIAL.
+    CREATE OBJECT cc_editor_0200
+      EXPORTING
+        container_name              = 'CC_TXTINSMAT'
+      EXCEPTIONS
+        cntl_error                  = 1
+        cntl_system_error           = 2
+        create_error                = 3
+        lifetime_error              = 4
+        lifetime_dynpro_dynpro_link = 5
+        OTHERS                      = 6.
+
+    CREATE OBJECT obj_editor_0200
+      EXPORTING
+        parent                     = cc_editor_0200
+        wordwrap_mode              = cl_gui_textedit=>wordwrap_at_windowborder  "{wordwrap_off, wordwrap_at_fixed_position/wordwrap_at_windowborder}
+        "wordwrap_position          = line_length
+        wordwrap_to_linebreak_mode = cl_gui_textedit=>false
+      EXCEPTIONS
+        OTHERS                     = 1.
+
+    CALL METHOD obj_editor_0200->set_toolbar_mode
+      EXPORTING
+        toolbar_mode = cl_gui_textedit=>false.
+
+    tx_mode_0200 = 'X'.
+
+    CLEAR: wa_insmat, wa_matdevcod, wa_return_matdes, new_matnr,
+           wa_line, matbom.
+    REFRESH: it_tline, it_line.
+
+    CLEAR wa_matdevcod.
+    SELECT SINGLE * INTO wa_gpoaut FROM zugpo_aut
+      WHERE bname = sy-uname.
+    IF sy-subrc = 0.
+      wa_matdevcod-iniciales = wa_gpoaut-busab.
+    ENDIF.        "<< v_usr_name
+
+  ENDIF.
+  SET CURSOR FIELD cursor_field.
+ENDMODULE.                 " INIT_0200  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0310  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0310 OUTPUT.
+  SET PF-STATUS 'ST310'.
+  SET TITLEBAR 'TT310'.
+ENDMODULE.                 " STATUS_0310  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  INIT_0310  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE INIT_0310 OUTPUT.
+  IF tx_mode_0200 IS INITIAL.
+    CREATE OBJECT cc_editor_0200
+      EXPORTING
+        container_name              = 'CC_TXTIFRA'
+      EXCEPTIONS
+        cntl_error                  = 1
+        cntl_system_error           = 2
+        create_error                = 3
+        lifetime_error              = 4
+        lifetime_dynpro_dynpro_link = 5
+        OTHERS                      = 6.
+
+    CREATE OBJECT obj_editor_0200
+      EXPORTING
+        parent                     = cc_editor_0200
+        wordwrap_mode              = cl_gui_textedit=>wordwrap_off  "{wordwrap_off, wordwrap_at_fixed_position/wordwrap_at_windowborder}
+        "wordwrap_position          = line_length
+        wordwrap_to_linebreak_mode = cl_gui_textedit=>false
+      EXCEPTIONS
+        OTHERS                     = 1.
+
+    CALL METHOD obj_editor_0200->set_toolbar_mode
+      EXPORTING
+        toolbar_mode = cl_gui_textedit=>false.
+
+    CALL METHOD obj_editor_0200->set_readonly_mode
+      EXPORTING
+        readonly_mode = 1.
+
+*    CALL METHOD obj_editor_0200->set_text_as_r3table
+*      EXPORTING
+*        table  = it_line
+*      EXCEPTIONS
+*        OTHERS = 1.
+
+*    CLEAR: wa_ifraval.
+    REFRESH: it_line,
+             it_ifra_stpo, it_ifra_mp, it_ifra_fam, it_ifra_nlis,
+             it_ifra_proh.
+
+    tx_mode_0200 = 'X'.
+
+  ENDIF.
+ENDMODULE.                 " INIT_0310  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  STATUS_0210  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE STATUS_0210 OUTPUT.
+  SET PF-STATUS 'ST210'.  "''
+  SET TITLEBAR 'TT210'.
+ENDMODULE.                 " STATUS_0210  OUTPUT
+*&---------------------------------------------------------------------*
+*&      Module  INIT_0210  OUTPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE INIT_0210 OUTPUT.
+  IF tx_mode_0200 IS INITIAL.
+    REFRESH: it_stpo_api02, it_stko_api02, it_line, it_tline.
+    CLEAR: wa_stko_api01, wa_return_matdes, wa_insmat,
+           wa_matdevcod, new_matnr.
+    tx_mode_0200       = 'X'.
+    wa_insmat-copy_bom = 'X'.
+  ENDIF.
+ENDMODULE.                 " INIT_0210  OUTPUT
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701

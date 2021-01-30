@@ -1,0 +1,60 @@
+*&---------------------------------------------------------------------*
+*& Modulpool         ZPP_BEING_01
+*&
+*&---------------------------------------------------------------------*
+*&
+*&
+*&---------------------------------------------------------------------*
+
+PROGRAM ZPP_BEING_02.
+
+INCLUDE ZPP_INC_BOM_ACTAUT_01.
+
+INCLUDE ZPP_INC_BEING02_TOP.
+
+INCLUDE ZPP_INC_BEING02_F0100.
+
+INCLUDE ZPP_INC_BEING02_F0200.
+
+INCLUDE ZPP_INC_BEING02_F0210.
+
+INCLUDE ZPP_INC_BEING02_F0300.
+
+INCLUDE ZPP_INC_BEING02_F0310.
+
+INCLUDE ZPP_INC_BEING01_F0320.
+
+INCLUDE ZPP_INC_BEING02_PBO.
+
+INCLUDE ZPP_INC_BEING02_PAI.
+
+
+
+
+
+
+
+*
+
+*GUI Texts
+*----------------------------------------------------------
+* TB100 --> Esencias Iguazu
+* TT200 --> Crear material para desarrollo
+* TT210 --> Crear Producto Terminado
+* TT300 --> Esencias Iguazu&1
+* TT310 --> Validación IFRA
+* TB100 --> Esencias Iguazu
+* TT200 --> Crear material para desarrollo
+* TT210 --> Crear Producto Terminado
+* TT300 --> Esencias Iguazu&1
+* TT310 --> Validación IFRA
+
+
+*Messages
+*----------------------------------------------------------
+*
+* Message class: Hard coded
+*   Material con marca de borrado
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701

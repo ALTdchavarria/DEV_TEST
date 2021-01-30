@@ -1,0 +1,1615 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPP_INC_BEING01_F0300
+*&---------------------------------------------------------------------*
+*--------------------------------------------------------------------*
+* Status
+*--------------------------------------------------------------------*
+FORM tx_300_btns_init_create.
+  DATA wa_excluding TYPE sy-ucomm.
+
+  REFRESH it_funcod_excluding.
+  CLEAR wa_excluding.
+  wa_excluding = 'FUPD'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FSAV'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FVIE'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FIFR'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FPIC'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+ENDFORM.
+
+FORM tx_300_btns_init_display.
+  DATA wa_excluding TYPE sy-ucomm.
+
+  REFRESH it_funcod_excluding.
+  CLEAR wa_excluding.
+  wa_excluding = 'FNEW'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FSAV'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FVIE'.
+  APPEND wa_excluding TO it_funcod_excluding.
+
+*  CLEAR wa_excluding.
+*  wa_excluding = 'FIFR'.
+*  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FPIC'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+ENDFORM.
+
+FORM tx_300_btns_on_update.
+  DATA wa_excluding TYPE sy-ucomm.
+
+  REFRESH it_funcod_excluding.
+  CLEAR wa_excluding.
+  wa_excluding = 'FNEW'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FUPD'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+*En desarrollo
+*  CLEAR wa_excluding.
+*  wa_excluding = 'FIFR'.
+*  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  IF focus_bom = '1'.
+    PERFORM chkaut USING    wa_gpoaut-stlbe
+                            const_actvt_z1
+                   CHANGING subrc_aut.
+    IF subrc_aut <> 0.
+      CLEAR wa_excluding.
+      wa_excluding = 'FPIC'.
+      COLLECT wa_excluding INTO it_funcod_excluding.
+    ENDIF.
+  ENDIF.        "<< mat1
+*En desarrollo
+ENDFORM.
+
+FORM tx_300_btns_on_display.
+  DATA wa_excluding TYPE sy-ucomm.
+
+  REFRESH it_funcod_excluding.
+  CLEAR wa_excluding.
+  wa_excluding = 'FNEW'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FSAV'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FVIE'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+
+*  CLEAR wa_excluding.
+*  wa_excluding = 'FIFR'.
+*  COLLECT wa_excluding INTO it_funcod_excluding.
+
+  CLEAR wa_excluding.
+  wa_excluding = 'FPIC'.
+  COLLECT wa_excluding INTO it_funcod_excluding.
+ENDFORM.
+*--------------------------------------------------------------------*
+* Table control
+*--------------------------------------------------------------------*
+FORM tc_scrolling USING VALUE(i_tc_nam) TYPE dynfnam
+                        VALUE(i_ok).
+*&SPWIZARD: BEGIN OF LOCAL DATA----------------------------------------*
+  DATA l_tc_new_top_line TYPE i.
+  DATA l_tc_name         LIKE feld-name.
+  DATA l_tc_lines_name   LIKE feld-name.
+  DATA l_tc_field_name   LIKE feld-name.
+
+  FIELD-SYMBOLS <tc>     TYPE cxtab_control.
+  FIELD-SYMBOLS <lines>  TYPE i.
+*&SPWIZARD: END OF LOCAL DATA------------------------------------------*
+  ASSIGN (i_tc_nam) TO <tc>.
+*&SPWIZARD: get looplines of TableControl                              *
+*  CONCATENATE 'G_' i_tc_nam '_LINES' INTO l_tc_lines_name.
+  l_tc_lines_name = 'TC_ROW_COUNT'.
+  ASSIGN (l_tc_lines_name) TO <lines>.
+*&SPWIZARD: is no line filled?                                         *
+  IF <tc>-lines = 0.
+*&SPWIZARD: yes, ...                                                   *
+    l_tc_new_top_line = 1.
+  ELSE.
+*&SPWIZARD: no, ...                                                    *
+    CALL FUNCTION 'SCROLLING_IN_TABLE'
+      EXPORTING
+        entry_act      = <tc>-top_line
+        entry_from     = 1
+        entry_to       = <tc>-lines
+        last_page_full = 'X'
+        loops          = <lines>
+        ok_code        = i_ok
+        overlapping    = 'X'
+      IMPORTING
+        entry_new      = l_tc_new_top_line
+      EXCEPTIONS
+        OTHERS         = 0.
+  ENDIF.
+*&SPWIZARD: get actual tc and column                                   *
+  GET CURSOR FIELD l_tc_field_name
+             AREA  l_tc_name.
+
+  IF syst-subrc = 0.
+    IF l_tc_name = i_tc_nam.
+*&SPWIZARD: et actual column                                           *
+      SET CURSOR FIELD l_tc_field_name LINE 1.
+    ENDIF.
+  ENDIF.
+*&SPWIZARD: set the new top line                                       *
+  <tc>-top_line = l_tc_new_top_line.
+ENDFORM.
+
+FORM tc_sort_lines USING i_tc_name
+                         i_table_name
+                         i_sort.
+*&SPWIZARD: BEGIN OF LOCAL DATA----------------------------------------*
+  DATA l_table_name     LIKE feld-name.
+  FIELD-SYMBOLS <tc>    TYPE cxtab_control.
+  FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
+  FIELD-SYMBOLS <wa>.
+  FIELD-SYMBOLS <mark_field>.
+*&SPWIZARD: END OF LOCAL DATA------------------------------------------*
+  ASSIGN (i_tc_name) TO <tc>.
+  READ TABLE <tc>-cols INTO tc_pos_col WITH KEY selected = 'X'.
+  IF sy-subrc EQ 0.
+*&SPWIZARD: get the table, which belongs to the tc                     *
+    CONCATENATE i_table_name '[]' INTO l_table_name. "table body
+    ASSIGN (l_table_name) TO <table>.                "not headerline
+  ENDIF.
+  CASE i_sort.
+    WHEN 1.
+      SORT it_pos ASCENDING BY (tc_pos_col-screen-name+7) maktx.
+    WHEN 2.
+      SORT it_pos DESCENDING BY (tc_pos_col-screen-name+7) maktx ASCENDING.
+  ENDCASE.
+ENDFORM.
+
+FORM tc_mark_demark_lines USING VALUE(i_tc_nam)
+                                VALUE(i_it_nam)
+                                VALUE(i_mark_name)
+                                VALUE(i_mark_flag).
+  DATA l_table_name     LIKE feld-name.
+
+  FIELD-SYMBOLS <tc>    TYPE cxtab_control.
+  FIELD-SYMBOLS <table> TYPE STANDARD TABLE.
+  FIELD-SYMBOLS <wa>.
+  FIELD-SYMBOLS <mark_field>.
+*&SPWIZARD: END OF LOCAL DATA------------------------------------------*
+  ASSIGN (i_tc_nam) TO <tc>.
+*&SPWIZARD: get the table, which belongs to the tc                     *
+  CONCATENATE i_it_nam '[]' INTO l_table_name. "table body
+  ASSIGN (l_table_name) TO <table>.                "not headerline
+*&SPWIZARD: mark all filled lines                                      *
+  LOOP AT <table> ASSIGNING <wa>.
+*&SPWIZARD: access to the component 'FLAG' of the table header         *
+    ASSIGN COMPONENT i_mark_name OF STRUCTURE <wa> TO <mark_field>.
+    <mark_field> = i_mark_flag.
+  ENDLOOP.
+ENDFORM.
+
+FORM tc_ins_row USING VALUE(i_tc_nam) TYPE dynfnam
+                      VALUE(i_it_nam)
+                      VALUE(i_type_name).
+*&SPWIZARD: BEGIN OF LOCAL DATA----------------------------------------*
+  DATA: l_lines_name LIKE feld-name,
+        l_selline    LIKE sy-stepl,
+        l_lastline   TYPE i,
+        l_line       TYPE i,
+        l_table_name LIKE feld-name.
+  FIELD-SYMBOLS <tc>         TYPE cxtab_control.
+  FIELD-SYMBOLS <table>      TYPE STANDARD TABLE.
+  FIELD-SYMBOLS <lines>      TYPE i.
+  FIELD-SYMBOLS <wa>.
+  FIELD-SYMBOLS <type_field>.
+*&SPWIZARD: END OF LOCAL DATA------------------------------------------*
+  ASSIGN (i_tc_nam) TO <tc>.
+*&SPWIZARD: get the table, which belongs to the tc                     *
+  CONCATENATE i_it_nam '[]' INTO l_table_name. "table body
+  ASSIGN (l_table_name) TO <table>.                "not headerline
+*&SPWIZARD: get looplines of TableControl                              *
+*  CONCATENATE 'G_' p_tc_name '_LINES' INTO l_lines_name.
+  l_lines_name = 'TC_ROW_COUNT'.
+  ASSIGN (l_lines_name) TO <lines>.
+*&SPWIZARD: get current line                                           *
+*   GET CURSOR LINE L_SELLINE.
+  sy-subrc = 4.
+  IF sy-subrc <> 0.                   " append line to table
+    l_selline = <tc>-lines + 1.
+*&SPWIZARD: set top line                                               *
+    IF l_selline > <lines>.
+      <tc>-top_line = l_selline - <lines> + 1 .
+    ELSE.
+      <tc>-top_line = 1.
+    ENDIF.
+  ELSE.                               " insert line into table
+    l_selline = <tc>-top_line + l_selline - 1.
+    l_lastline = <tc>-top_line + <lines> - 1.
+  ENDIF.
+*&SPWIZARD: set new cursor line                                        *
+  l_line = l_selline - <tc>-top_line + 1.
+*&SPWIZARD: insert initial line                                        *
+  INSERT INITIAL LINE INTO <table> INDEX l_selline.
+*  READ TABLE <table> ASSIGNING <wa> INDEX l_selline.
+*  IF sy-subrc EQ 0.
+*    ASSIGN COMPONENT i_type_name OF STRUCTURE <wa> TO <type_field>.
+*    <type_field> = '2'.
+*  ENDIF.
+  <tc>-lines = <tc>-lines + 1.
+  tc_line_aux = l_line.
+*&SPWIZARD: set cursor                                                 *
+  SET CURSOR LINE l_line.
+ENDFORM.
+
+FORM tc_del_row USING VALUE(i_tc_nam)    TYPE dynfnam
+                      VALUE(i_it_nam)
+                      VALUE(i_mark_name)
+                      VALUE(i_type_name).
+*&SPWIZARD: BEGIN OF LOCAL DATA----------------------------------------*
+  DATA: l_table_name LIKE feld-name,
+        v_idx        TYPE sy-tabix.
+        "ls_pos       TYPE ty_pos.
+
+  FIELD-SYMBOLS <tc>         TYPE cxtab_control.
+  FIELD-SYMBOLS <table>      TYPE STANDARD TABLE.
+  FIELD-SYMBOLS <wa>.
+  FIELD-SYMBOLS <mark_field>.
+  FIELD-SYMBOLS <type_field>.
+  FIELD-SYMBOLS <icon01>.
+*&SPWIZARD: END OF LOCAL DATA------------------------------------------*
+  ASSIGN (i_tc_nam) TO <tc>.
+*&SPWIZARD: get the table, which belongs to the tc                     *
+  CONCATENATE i_it_nam '[]' INTO l_table_name. "table body
+  ASSIGN (l_table_name) TO <table>.                "not headerline
+*&SPWIZARD: delete marked lines                                        *
+  DESCRIBE TABLE <table> LINES <tc>-lines.
+
+  CLEAR v_idx.
+  LOOP AT <table> ASSIGNING <wa>.
+*    v_idx = v_idx + 1.
+    v_idx = sy-tabix.
+*&SPWIZARD: access to the component 'FLAG' of the table header         *
+    ASSIGN COMPONENT i_mark_name OF STRUCTURE <wa> TO <mark_field>.
+    ASSIGN COMPONENT i_type_name OF STRUCTURE <wa> TO <type_field>.
+    ASSIGN COMPONENT 'ICON01' OF STRUCTURE <wa> TO <icon01>.
+    IF <mark_field> = 'X'.
+      IF NOT <type_field> IS INITIAL AND focus_bom = '1'.
+        PERFORM cs02_by_pos USING    mat1
+                                     <wa>
+                                     'X'
+                            CHANGING v_subrc
+                                     lst_item_no.
+      ELSE.
+        v_subrc = 0.
+      ENDIF.        "<< type_field & focus_bom?
+      IF v_subrc = 0.
+        CLEAR <mark_field>.
+        DELETE <table> INDEX v_idx.
+        IF sy-subrc = 0.
+          <tc>-lines = <tc>-lines - 1.
+        ENDIF.
+      ENDIF.
+*--------------------------------------------------------------------*
+*      IF focus_bom = '1'.
+*        IF NOT <type_field> IS INITIAL.
+*          PERFORM cs02_by_pos USING    mat1
+*                                       <wa>
+*                                       'X'
+*                              CHANGING v_subrc
+*                                       lst_item_no.
+*        ENDIF.        "<< type_field
+*        CLEAR <mark_field>.
+*        DELETE <table> INDEX v_idx.
+*        IF sy-subrc = 0.
+*          <tc>-lines = <tc>-lines - 1.
+*        ENDIF.
+*      ENDIF.        "<< focus_bom?
+*--------------------------------------------------------------------*
+    ENDIF.        "<< selected?
+  ENDLOOP.
+ENDFORM.
+
+FORM tc_cpy_col USING VALUE(i_cursor_field) TYPE dynfieldvalue.
+  DATA: factor_c TYPE char8,  "char4,
+        factor_n TYPE t7roe3-perce.  "degfak.
+  CLEAR factor_n.
+
+  IF i_cursor_field = 'WA_POS-MENGE1' OR
+     i_cursor_field = 'WA_POS-MENGE2' OR
+     i_cursor_field = 'WA_POS-MENGE3'.
+
+    IF i_cursor_field = 'WA_POS-MENGE1'.
+      IF mat2 IS NOT INITIAL AND mat3 IS INITIAL.
+*Pasar valores a columna mat2
+        PERFORM popup_get_value USING    'Cant. M1 -> M2'
+                                         'T7ROE3' "'T090ND'
+                                         'PERCE' "'DEGFAK'
+                                         '0'
+                                CHANGING factor_c.
+        IF sy-subrc = 0.
+          factor_n = factor_c.
+          IF NOT factor_n IS INITIAL AND factor_n <= 100.
+            PERFORM collect_values USING 'MENGE1'
+                                         'MENGE2'
+                                         factor_n.
+          ELSE.
+            MESSAGE 'El factor debe ser mayor que 0 y menor o igual a 100' TYPE 'I'.
+          ENDIF.        "<< factor_n
+        ENDIF.        "<< popup_get_value
+      ENDIF.        "<< mat2 not initial mat1 initial
+      IF mat2 IS NOT INITIAL AND mat3 IS NOT INITIAL.
+*Pasar valores a columna mat3
+        PERFORM popup_get_value USING    'Cant. M1 -> M3'
+                                         'T7ROE3' "'T090ND'
+                                         'PERCE' "'DEGFAK'
+                                         '0'
+                                CHANGING factor_c.
+        IF sy-subrc = 0.
+          factor_n = factor_c.
+          IF NOT factor_n IS INITIAL AND factor_n <= 100.
+            PERFORM collect_values USING 'MENGE1'
+                                         'MENGE3'
+                                         factor_n.
+          ELSE.
+            MESSAGE 'El factor debe ser mayor que 0 y menor o igual a 100' TYPE 'I'.
+          ENDIF.        "<< factor_n
+        ENDIF.        "<< popup_get_value
+      ENDIF.        "<< mat2 not initial mat3 not initial
+    ENDIF.        "<< menge1
+    IF i_cursor_field = 'WA_POS-MENGE2'.  "GS_ITAB-MENGE2
+*  Pasar valores a columna mat3
+      PERFORM popup_get_value USING    'Cant. M2 -> M3'
+                                       'T7ROE3' "'T090ND'
+                                       'PERCE' "'DEGFAK'
+                                       '0'
+                              CHANGING factor_c.
+      IF sy-subrc = 0.
+        factor_n = factor_c.
+        IF NOT factor_n IS INITIAL AND factor_n <= 100.
+          PERFORM collect_values USING 'MENGE2'
+                                       'MENGE3'
+                                       factor_n.
+        ELSE.
+          MESSAGE 'El factor debe ser mayor que 0 y menor o igual a 100' TYPE 'I'.
+        ENDIF.        "<< factor_n
+      ENDIF.        "<< popup_get_value
+    ENDIF.        "<< menge2
+  ENDIF.        "<< cursor_field IN menge(1, 2, 3)
+ENDFORM.
+*--------------------------------------------------------------------*
+* Tool bar
+*--------------------------------------------------------------------*
+FORM tb_buttons_invisible USING VALUE(i_invisible)
+                                VALUE(i_button).
+  LOOP AT SCREEN.
+    CHECK screen-name = i_button.
+    IF NOT i_invisible IS INITIAL.
+      screen-invisible = '1'.
+    ELSEIF i_invisible IS INITIAL.
+      screen-invisible = '0'.
+    ENDIF.
+    MODIFY SCREEN.
+    EXIT.
+  ENDLOOP.
+ENDFORM.
+
+FORM tb_usr_cmd USING VALUE(i_tc_nam) TYPE dynfnam
+                      VALUE(i_it_nam) "TYPE'IT_POS'
+                      VALUE(i_selfld) "'SELECT'
+                      VALUE(i_okcode) TYPE sy-ucomm..
+  DATA: l_offset TYPE i,
+        l_ok     TYPE sy-ucomm.
+
+  SEARCH i_okcode FOR i_tc_nam.
+  IF sy-subrc <> 0.
+    EXIT.
+  ENDIF.
+  l_offset = STRLEN( i_tc_nam ) + 1.
+  l_ok     = i_okcode+l_offset.
+  CASE l_ok.
+    WHEN 'P--' OR 'P-' OR 'P++' OR 'P+'.
+      PERFORM tc_scrolling USING i_tc_nam
+                                 l_ok.
+    WHEN 'SRTA'.
+      PERFORM tc_sort_lines USING i_tc_nam
+                                  i_it_nam
+                                  1.
+    WHEN 'SRTD'.
+      PERFORM tc_sort_lines USING i_tc_nam
+                                  i_it_nam
+                                  2.
+    WHEN 'MARK'.
+      PERFORM tc_mark_demark_lines USING i_tc_nam
+                                         i_it_nam
+                                         i_selfld
+                                         'X'.
+    WHEN 'DMRK'.
+      PERFORM tc_mark_demark_lines USING i_tc_nam
+                                         i_it_nam
+                                         i_selfld
+                                         space.
+    WHEN 'INSR'.
+      PERFORM tc_ins_row USING i_tc_nam
+                               i_it_nam
+                               'TYPE'.
+    WHEN 'DELR'.
+      PERFORM tc_del_row USING i_tc_nam
+                               i_it_nam
+                               i_selfld
+                               'POSNR'.  "'TYPE'.
+    WHEN 'CPYC'.
+      PERFORM tc_cpy_col USING cursor_field.
+
+
+
+
+
+  ENDCASE.
+  tb_cmd = l_ok.
+ENDFORM.
+*--------------------------------------------------------------------*
+FORM fcat_material_list TABLES pit_fcat TYPE slis_t_fieldcat_alv.
+  DATA wa_fcat TYPE slis_fieldcat_alv.
+  REFRESH pit_fcat.
+
+  CLEAR wa_fcat.
+  wa_fcat-fieldname   = 'MATNR'.
+  wa_fcat-ref_tabname = 'MAKT'.
+*  wa_fcat-seltext_m = 'Material'.
+*  wa_fcat-outputlen = 18.
+*  wa_fcat-key       = 'X'.
+*  wa_fcat-key_sel   = 'X'.
+*  wa_fcat-hotspot   = 'X'.
+  APPEND wa_fcat TO pit_fcat.
+
+  CLEAR wa_fcat.
+  wa_fcat-fieldname   = 'MAKTX'.
+  wa_fcat-ref_tabname = 'MAKT'.
+*  wa_fcat-seltext_m = 'Descripción'.
+*  wa_fcat-outputlen = 40.
+  APPEND wa_fcat TO pit_fcat.
+
+  wa_fcat-fieldname   = 'PRPRS'.
+  wa_fcat-ref_tabname = 'MBEW'.
+  wa_fcat-seltext_m   = 'Costo Kg.'.
+  wa_fcat-ddictxt     = 'M'.
+  APPEND wa_fcat TO pit_fcat.
+ENDFORM.
+
+FORM f4_material USING    VALUE(i_extwg) TYPE extwg
+                          VALUE(i_matnr) TYPE matnr
+                 CHANGING VALUE(c_matnr) TYPE matnr.
+  DATA: BEGIN OF zstr_lstmat,
+          matnr LIKE mara-matnr,
+          maktx LIKE makt-maktx,
+          vprsv LIKE mbew-vprsv,
+          verpr LIKE mbew-verpr,
+          stprs LIKE mbew-stprs,
+          prprs LIKE mbew-stprs,
+        END OF zstr_lstmat.
+
+  DATA: it_cat_lstmat LIKE TABLE OF zstr_lstmat,
+        wa_cat_lstmat LIKE zstr_lstmat,
+        txt_extwg     LIKE mara-extwg,
+        txt_matnr     LIKE makt-maktx,
+        v_tabix       TYPE sy-tabix.
+
+  DATA: wa_mara      TYPE mara,
+        wa_makt      TYPE makt,
+        it_fcat_mara TYPE slis_t_fieldcat_alv,
+        v_selfield   TYPE slis_selfield,
+        v_exit       TYPE c.
+
+  CLEAR c_matnr.
+*--------------------------------------------------------------------*
+* Olor?
+  IF NOT i_extwg IS INITIAL.
+    REFRESH it_cat_lstmat.
+    SELECT a~matnr a~maktx b~vprsv b~verpr b~stprs INTO CORRESPONDING FIELDS OF TABLE it_cat_lstmat
+      FROM makt AS a
+      INNER JOIN mbew AS b
+        ON b~matnr = a~matnr
+      INNER JOIN mara AS c
+        ON c~matnr = a~matnr
+      WHERE b~bwkey =  const_werks
+        AND b~lvorm <> 'X'
+        AND c~lvorm <> 'X'
+        AND c~matkl IN ('B3', 'D4', 'N1', 'S2')
+        AND c~mstae NOT IN ('02', '03', '04', 'ZI')
+        AND a~spras =  sy-langu
+        AND c~extwg LIKE i_extwg
+      ORDER BY a~matnr.
+*--------------------------------------------------------------------*
+* No.de mat.
+  ELSE.
+    CLEAR wa_mara.
+    SELECT SINGLE * INTO wa_mara FROM mara
+      WHERE matnr =  i_matnr.
+    IF sy-subrc = 0.
+      IF wa_mara-lvorm = 'X'.
+        MESSAGE 'Material borrado, no se puede utilizar' TYPE 'S' DISPLAY LIKE 'E'.
+        CLEAR wa_pos.
+        EXIT.
+      ELSEIF wa_mara-mstae = '02' OR wa_mara-mstae = '03' OR wa_mara-mstae = '04' OR wa_mara-mstae = 'ZI'.
+        MESSAGE 'Material bloqueado, no se puede utilizar' TYPE 'S' DISPLAY LIKE 'E'.
+        CLEAR wa_pos.
+        EXIT.
+      ELSE.
+*        CLEAR wa_makt.
+*        SELECT SINGLE * INTO wa_makt FROM makt
+*          WHERE matnr = i_matnr
+*            AND spras = sy-langu.
+        c_matnr = wa_mara-matnr.
+        EXIT.
+      ENDIF.
+    ENDIF.
+*--------------------------------------------------------------------*
+*Txt matnr
+    txt_matnr = i_matnr.
+    TRANSLATE txt_matnr TO UPPER CASE.
+    SHIFT txt_matnr LEFT DELETING LEADING space.
+    REPLACE '*' WITH '%' INTO txt_matnr.
+    CONCATENATE '%' txt_matnr '%' INTO txt_matnr.
+*--------------------------------------------------------------------*
+    REFRESH it_cat_lstmat.
+    SELECT a~matnr a~maktx b~vprsv b~verpr b~stprs INTO CORRESPONDING FIELDS OF TABLE it_cat_lstmat
+      FROM makt AS a
+      INNER JOIN mbew AS b
+        ON b~matnr = a~matnr
+      INNER JOIN mara AS c
+        ON c~matnr = a~matnr
+      WHERE b~bwkey =  const_werks
+        AND b~lvorm <> 'X'
+        AND c~lvorm <> 'X'
+        AND c~matkl IN ('B3', 'D4', 'N1', 'S2')
+        AND c~mstae NOT IN ('02', '03', '04', 'ZI')
+        AND a~spras =  sy-langu
+        AND a~maktx LIKE txt_matnr
+      ORDER BY a~matnr.
+  ENDIF.
+*  IF sy-subrc = 0.
+  CLEAR v_tabix.
+  LOOP AT it_cat_lstmat INTO wa_cat_lstmat.
+    v_tabix = sy-tabix.
+*Precio
+    PERFORM co_material_matprim TABLES   it_ifra_stpo
+                                         it_ifra_mp
+                                         it_ifra_fam
+                                         it_ifra_nlis
+                                         it_ifra_proh
+                                USING    wa_cat_lstmat-matnr
+                                         const_werks
+                                         const_menge
+                                         ''
+                                CHANGING ifra_verpr
+                                         ifra_precio.
+    IF sy-subrc = 0.
+      wa_cat_lstmat-prprs = ifra_precio.
+    ENDIF.
+    MODIFY it_cat_lstmat FROM wa_cat_lstmat INDEX v_tabix.
+  ENDLOOP.
+  IF it_cat_lstmat[] IS NOT INITIAL.
+    IF v_tabix > 1.
+*Inicializar fcat
+      PERFORM fcat_material_list TABLES it_fcat_mara.
+*Mostrar lista
+      PERFORM popup_alv TABLES   it_cat_lstmat
+                        USING    it_fcat_mara
+                                 'Materiales válidos'
+                        CHANGING v_selfield
+                                 v_exit.
+      IF v_exit <> 'X'.
+*Obtener respuesta
+        READ TABLE it_cat_lstmat INTO wa_cat_lstmat INDEX v_selfield-tabindex.
+        IF sy-subrc = 0.
+          c_matnr = wa_cat_lstmat-matnr.
+        ENDIF.
+      ENDIF.        "<< popup alv
+    ELSE.
+*Un material, lo asigna directo (Sin popup)
+      READ TABLE it_cat_lstmat INTO wa_cat_lstmat INDEX 1.
+      IF sy-subrc = 0.
+        c_matnr = wa_cat_lstmat-matnr.
+      ENDIF.
+    ENDIF.        "<< v_tabix > 1?
+    REFRESH: it_cat_lstmat, it_fcat_mara.
+  ENDIF.        "<< it_cat_lstmat[]?
+ENDFORM.
+
+FORM is_duplicated USING    VALUE(i_matnr) TYPE matnr
+                   CHANGING VALUE(c_flg)   TYPE c.
+  DATA ls_pos TYPE ty_pos.
+
+  CLEAR c_flg.
+  READ TABLE it_pos INTO ls_pos WITH KEY postp = 'L'
+                                         idnrk = i_matnr.
+  IF sy-subrc = 0.
+    c_flg = 'X'.
+  ENDIF.
+ENDFORM.
+
+FORM material_position_data CHANGING VALUE(c_pos) TYPE ty_pos.
+*Mara
+  SELECT SINGLE meins extwg INTO (c_pos-meins, c_pos-extwg) FROM mara
+    WHERE matnr = c_pos-idnrk.
+  IF sy-subrc = 0.
+    CONDENSE c_pos-extwg NO-GAPS.
+
+*Txt. material
+    SELECT SINGLE maktx INTO c_pos-maktx FROM makt
+      WHERE spras = sy-langu
+        AND matnr = c_pos-idnrk.
+
+*Precio
+    PERFORM co_material_matprim TABLES   it_ifra_stpo
+                                         it_ifra_mp
+                                         it_ifra_fam
+                                         it_ifra_nlis
+                                         it_ifra_proh
+                                USING    c_pos-idnrk
+                                         const_werks
+                                         const_menge
+                                         ''
+                                CHANGING ifra_verpr
+                                         ifra_precio.
+    c_pos-verpr  = ifra_precio.
+    c_pos-waers  = 'MXP'.
+*    c_bom-meins  = wa_stpo-meins.
+    c_pos-lstmat = '1'.
+    c_pos-postp  = 'L'.
+*    c_bom-menge1 = wa_stpo-menge.
+    c_pos-verpr1 = c_pos-verpr * c_pos-menge1 / const_menge.
+    c_pos-verpr2 = c_pos-verpr * c_pos-menge2 / const_menge.
+    c_pos-verpr3 = c_pos-verpr * c_pos-menge3 / const_menge.
+  ENDIF.        "<< mara?
+
+ENDFORM.
+
+FORM f4_extwg_hlp CHANGING VALUE(c_extwg) TYPE extwg.
+  DATA: it_fcat TYPE slis_t_fieldcat_alv,
+        wa_fcat TYPE slis_fieldcat_alv.
+
+  DATA: BEGIN OF zstr_olor,
+          extwg LIKE twewt-extwg,
+          ewbez LIKE twewt-ewbez,
+        END OF zstr_olor.
+
+  DATA: it_cat_olor LIKE TABLE OF zstr_olor,
+        wa_cat_olor LIKE zstr_olor,
+        v_selfield  TYPE slis_selfield,
+        v_exit      TYPE c.
+
+  SELECT extwg ewbez INTO CORRESPONDING FIELDS OF TABLE it_cat_olor
+    FROM twewt
+    WHERE spras = sy-langu
+    ORDER BY extwg.
+
+  IF sy-subrc = 0.
+    REFRESH it_fcat.
+
+    CLEAR wa_fcat.
+    wa_fcat-fieldname   = 'EXTWG'.
+    wa_fcat-ref_tabname = 'TWEWT'.
+    wa_fcat-seltext_m   = 'Clave'.
+    wa_fcat-ddictxt     = 'M'.
+*    wa_fcat-outputlen = 18.
+*    wa_fcat-key       = 'X'.
+*    wa_fcat-key_sel   = 'X'.
+*    wa_fcat-hotspot   = 'X'.
+    APPEND wa_fcat TO it_fcat.
+
+    CLEAR wa_fcat.
+    wa_fcat-fieldname   = 'EWBEZ'.
+    wa_fcat-ref_tabname = 'TWEWT'.
+    wa_fcat-seltext_m   = 'Descripción'.
+    wA_fcat-ddictxt     = 'M'.
+*    wa_fcat-outputlen = 40.
+    APPEND wa_fcat TO it_fcat.
+
+    PERFORM popup_alv TABLES   it_cat_olor
+                      USING    it_fcat
+                               'Materiales válidos'
+                      CHANGING v_selfield
+                               v_exit.
+    IF v_exit <> 'X'.
+      READ TABLE it_cat_olor INTO wa_cat_olor INDEX v_selfield-tabindex.
+      IF sy-subrc = 0.
+        c_extwg = wa_cat_olor-extwg.
+      ENDIF.
+    ENDIF.        "<< popup alv
+    REFRESH: it_cat_olor, it_fcat.
+  ENDIF.        "<< twewt?
+ENDFORM.
+
+FORM total_line CHANGING VALUE(c_tot) LIKE zstr_tot.
+  DATA: ls_pos TYPE ty_pos,
+        v_idx  TYPE i.
+  FIELD-SYMBOLS <fs_tc_col> TYPE cxtab_column.
+
+  CLEAR: c_tot, v_idx.
+  LOOP AT it_pos INTO ls_pos WHERE icon01 IS INITIAL.
+    IF NOT ls_pos-idnrk IS INITIAL.
+      v_idx = v_idx + 1.
+      ls_pos-index = v_idx * 10.
+      MODIFY it_pos FROM ls_pos INDEX sy-tabix.
+    ENDIF.
+    c_tot-menge1 = c_tot-menge1 + ls_pos-menge1.
+    c_tot-verpr1 = c_tot-verpr1 + ls_pos-verpr1.
+    c_tot-menge2 = c_tot-menge2 + ls_pos-menge2.
+    c_tot-verpr2 = c_tot-verpr2 + ls_pos-verpr2.
+    c_tot-menge3 = c_tot-menge3 + ls_pos-menge3.
+    c_tot-verpr3 = c_tot-verpr3 + ls_pos-verpr3.
+  ENDLOOP.
+
+  CASE focus_bom.
+    WHEN '1'.
+      IF c_tot-menge1 <> 0.
+        c_tot-verpr = c_tot-verpr1 * const_menge / c_tot-menge1.
+      ENDIF.
+    WHEN '2'.
+      IF c_tot-menge2 <> 0.
+        c_tot-verpr = c_tot-verpr2 * const_menge / c_tot-menge2.
+      ENDIF.
+    WHEN '3'.
+      IF c_tot-menge3 <> 0.
+        c_tot-verpr = c_tot-verpr3 * const_menge / c_tot-menge3.
+      ENDIF.
+  ENDCASE.
+
+  READ TABLE tc_pos-cols ASSIGNING <fs_tc_col> WITH KEY selected = 'X'.
+  IF sy-subrc = 0.
+    CLEAR <fs_tc_col>-selected.
+  ENDIF.
+  UNASSIGN <fs_tc_col>.
+  CLEAR: ls_pos, v_idx.
+ENDFORM.
+*--------------------------------------------------------------------*
+* CALO log
+*--------------------------------------------------------------------*
+FORM calo_init_api.
+  CALL FUNCTION 'CALO_INIT_API'
+    EXCEPTIONS
+      log_object_not_found     = 1
+      log_sub_object_not_found = 2
+      OTHERS                   = 3.
+ENDFORM.
+
+FORM calo_log_read_messages TABLES pit_message STRUCTURE messages.
+  REFRESH pit_message.
+  CALL FUNCTION 'CALO_LOG_READ_MESSAGES'
+    EXPORTING
+      log_class               = '4'
+    TABLES
+      messages_and_parameters = pit_message
+    EXCEPTIONS
+      warning                 = 1
+      error                   = 2
+      OTHERS                  = 3.
+ENDFORM.
+
+FORM c14z_messages_show_as_popup TABLES pit_mtab.
+  CALL FUNCTION 'C14Z_MESSAGES_SHOW_AS_POPUP'
+    TABLES
+      i_message_tab = pit_mtab.
+ENDFORM.
+*--------------------------------------------------------------------*
+FORM convert_date_to_external USING    VALUE(i_datin) TYPE dats
+                              CHANGING VALUE(c_datou)." TYPE
+  CLEAR c_datou.
+  CALL FUNCTION 'CONVERT_DATE_TO_EXTERNAL'
+    EXPORTING
+      date_internal            = i_datin  "sy-datum
+    IMPORTING
+      date_external            = c_datou  "ext_date
+    EXCEPTIONS
+      date_internal_is_invalid = 1
+      OTHERS                   = 2.
+ENDFORM.
+
+FORM popup_get_value USING    VALUE(i_title)         TYPE c
+                              VALUE(i_tablename)     TYPE tabname
+                              VALUE(i_fieldname)     TYPE fieldname
+                              VALUE(i_field_value)   TYPE any
+                     CHANGING VALUE(c_field_value_c) TYPE c.  "char4.
+  CLEAR c_field_value_c.
+  CALL FUNCTION 'FOBU_POPUP_GET_VALUE'
+    EXPORTING
+*      typename          =
+      tablename         = i_tablename   "'T090ND'
+      fieldname         = i_fieldname   "'DEGFAK'
+      field_value       = i_field_value "'0'
+*      currency          =
+*      lenght            =
+*      decimals          =
+*      value_check       =
+      popup_title       = i_title "'Factor'
+*      start_column      = 5
+*      start_row         = 5
+    IMPORTING
+*      field_value_int   =
+      field_value_int_c = c_field_value_c
+*      field_value_ext   =
+    EXCEPTIONS
+      internal_error    = 1
+      cancelled         = 2.
+ENDFORM.
+
+FORM collect_values USING VALUE(i_from)   TYPE c
+                          VALUE(i_to)     TYPE c
+                          VALUE(i_factor) TYPE gvpro. "degfak.
+  DATA: lv_factor TYPE degfak,
+        lv_value  TYPE ty_pos-menge1,
+        wa_mbew   TYPE mbew.
+
+  FIELD-SYMBOLS <fs_wa> LIKE LINE OF it_pos.
+  FIELD-SYMBOLS <fs_val_to>   TYPE ty_pos-menge1.
+  FIELD-SYMBOLS <fs_val_from> TYPE ty_pos-menge1.
+
+  LOOP AT it_pos ASSIGNING <fs_wa>.
+    ASSIGN COMPONENT i_from OF STRUCTURE <fs_wa> TO <fs_val_from>.
+    ASSIGN COMPONENT i_to OF STRUCTURE <fs_wa> TO <fs_val_to>.
+    IF NOT <fs_val_from> IS INITIAL.
+      <fs_val_to> = <fs_val_from> * i_factor.
+
+      <fs_wa>-verpr1 = <fs_wa>-verpr * <fs_wa>-menge1 / const_menge.
+      <fs_wa>-verpr2 = <fs_wa>-verpr * <fs_wa>-menge2 / const_menge.
+      <fs_wa>-verpr3 = <fs_wa>-verpr * <fs_wa>-menge3 / const_menge.
+    ENDIF.
+  ENDLOOP.
+ENDFORM.
+
+FORM prn_mat USING VALUE(i_matnr) TYPE mara-matnr
+                   VALUE(i_verpr) TYPE mbew-verpr
+                   VALUE(i_bmeng) TYPE stko-bmeng.
+*ZSF_PPPRNBOM_01
+*  DATA: out_parameters         TYPE pri_params,
+*        out_archive_parameters TYPE arc_params,
+*        valid(1).
+
+*  CLEAR: out_parameters, out_archive_parameters, valid.
+*  CALL FUNCTION 'GET_PRINT_PARAMETERS'
+*    EXPORTING
+*      archive_mode           = '1'  " Just print
+*    IMPORTING
+*      out_parameters         = out_parameters
+*      out_archive_parameters = out_archive_parameters
+*      valid                  = valid
+*    EXCEPTIONS
+*      archive_info_not_found = 1
+*      invalid_print_params   = 2
+*      invalid_archive_params = 3
+*      OTHERS                 = 4.
+
+  SUBMIT ZPP_PRN_BOM_IGUAZU_01 WITH p_matnr = i_matnr
+                               WITH p_bmeng = i_bmeng
+                               WITH p_verpr = i_verpr AND RETURN.
+
+*                               TO SAP-SPOOL
+*                               SPOOL PARAMETERS out_parameters
+*                               ARCHIVE PARAMETERS out_archive_parameters
+*                               WITHOUT SPOOL DYNPRO AND RETURN.
+
+ENDFORM.
+
+FORM critical_material USING    VALUE(i_matnr) TYPE matnr
+                                VALUE(i_werks) TYPE werks_d
+                       CHANGING VALUE(c_icon)  TYPE stati_kk.
+  DATA ls_ifra_mp TYPE zest_prifra_collect_mp.
+  CLEAR c_icon.
+  REFRESH it_ifra_mp.
+  CALL FUNCTION 'ZMM_MATERIAL_CRITICO'
+    EXPORTING
+      matnr  = i_matnr
+      werks  = i_werks
+    TABLES
+      t_proh = it_ifra_mp
+    EXCEPTIONS
+      error  = 1
+      OTHERS = 2.
+
+  IF sy-subrc = 0.
+    IF NOT it_ifra_mp[] IS INITIAL.
+      READ TABLE it_ifra_mp INTO ls_ifra_mp WITH KEY val_ifra = 'CRITICO'.
+      IF sy-subrc = 0.
+        c_icon = '@AG@'.
+      ELSE.
+        READ TABLE it_ifra_mp INTO ls_ifra_mp WITH KEY val_ifra = 'RIESGO'.
+        IF sy-subrc = 0.
+          c_icon = '@5C@'.
+        ELSE.
+          c_icon = '@AH@'.
+        ENDIF.
+      ENDIF.        "<< ls_ifra_mp?
+    ENDIF.        "<< it_ifra_mp[]?
+  ENDIF.        "<< FM material_critico?
+ENDFORM.
+
+FORM prices_recording_process USING    VALUE(i_mat1)  LIKE zstr_mat
+                                       VALUE(i_mat2)  LIKE zstr_mat
+                                       VALUE(i_mat3)  LIKE zstr_mat
+                              CHANGING VALUE(c_subrc) TYPE sysubrc
+                                       VALUE(c_bom)   LIKE zstr_mat.
+  DATA: lt_hplm_02   TYPE TABLE OF zpp_hplm_02,
+        ls_hplm_02   TYPE zpp_hplm_02,
+        new_idx      TYPE atzhl,
+        hplm_02_rows TYPE atzhl,
+        v_verpr      TYPE mbew-verpr.
+
+  CASE focus_bom.
+    WHEN 1.
+      c_bom = i_mat1.
+    WHEN 2.
+      c_bom = i_mat2.
+    WHEN 3.
+      c_bom = i_mat3.
+  ENDCASE.
+
+  PERFORM material_dat01 CHANGING c_bom.
+  IF c_bom-stlnr IS INITIAL.
+    MESSAGE 'El material debe tener asignado una lista de material' TYPE 'S' DISPLAY LIKE 'E'.
+    v_subrc = 1.
+  ELSE.
+    PERFORM get_stas TABLES it_stas
+                     USING  c_bom.
+    IF NOT it_stas[] IS INITIAL.
+      REFRESH it_stpo.
+      SELECT * INTO TABLE it_stpo FROM stpo
+        FOR ALL ENTRIES IN it_stas
+        WHERE stlty = it_stas-stlty
+          AND stlnr = it_stas-stlnr
+          AND stlkn = it_stas-stlkn.
+      IF sy-subrc = 0.
+        SORT it_stpo BY stlnr stlkn stpoz.
+        PERFORM ins_hplm_01 USING    c_bom-matnr
+                                     c_bom-stlnr
+                                     c_bom-stlbe
+                            CHANGING new_idx
+                                     v_subrc.
+        IF v_subrc = 0.
+          REFRESH lt_hplm_02.
+          LOOP AT it_stpo INTO wa_stpo.
+            CLEAR ls_hplm_02.
+            ls_hplm_02-stlnr = wa_stpo-stlnr.
+            ls_hplm_02-atzhl = new_idx.
+            ls_hplm_02-posnr = wa_stpo-posnr.
+            ls_hplm_02-idnrk = wa_stpo-idnrk.
+            ls_hplm_02-menge = wa_stpo-menge.
+            PERFORM co_material_matprim TABLES   it_ifra_stpo
+                                                 it_ifra_mp
+                                                 it_ifra_fam
+                                                 it_ifra_nlis
+                                                 it_ifra_proh
+                                        USING    wa_stpo-idnrk
+                                                 const_werks
+                                                 const_menge
+                                                 ''
+                                        CHANGING ifra_verpr
+                                                 ifra_precio.
+            v_verpr = ifra_precio.
+            ls_hplm_02-verpr = v_verpr * ls_hplm_02-menge / const_menge.
+
+            APPEND ls_hplm_02 TO lt_hplm_02.
+          ENDLOOP.
+          IF NOT lt_hplm_02[] IS INITIAL.
+            PERFORM ins_hplm_02 TABLES   lt_hplm_02
+                                CHANGING hplm_02_rows.
+          ENDIF.        "<< lt_hplm_02[]?
+          CONCATENATE 'Lst.' c_bom-stlnr ',Ver. ' new_idx
+                      ', con' hplm_02_rows 'mat. prim. grabadas'
+                 INTO wa_line SEPARATED BY space.
+          MESSAGE wa_line TYPE 'S'.
+        ENDIF.        "<< new_idx?
+      ENDIF.        "<< it_stpo[]?
+    ELSE.
+      MESSAGE 'Ningún componente en la lista' TYPE 'S' DISPLAY LIKE 'E'.
+      v_subrc = 2.
+    ENDIF.        "<< it_stas[]?
+  ENDIF.        "<< mat-stlnr?
+ENDFORM.
+*--------------------------------------------------------------------*
+* BOM maintenance
+*--------------------------------------------------------------------*
+FORM csap_mat_bom_item_select TABLES   pit_stpo_api02       STRUCTURE stpo_api02
+                              USING    VALUE(i_stpo_api02)  TYPE stpo_api02
+                                       VALUE(i_material)    TYPE csap_mbom-matnr
+                                       VALUE(i_plant)       TYPE csap_mbom-werks
+                                       VALUE(i_bom_usage)   TYPE csap_mbom-stlan
+                                       VALUE(i_alternative) TYPE csap_mbom-stlal
+                              CHANGING VALUE(c_fl_warning)  TYPE capiflag-flwarning.
+  CLEAR c_fl_warning.
+  CALL FUNCTION 'CSAP_MAT_BOM_ITEM_SELECT'
+    EXPORTING
+      i_stpo      = i_stpo_api02
+      material    = i_material
+      plant       = i_plant
+      bom_usage   = i_bom_usage
+      alternative = i_alternative
+*      valid_from  = i_valid_from
+    IMPORTING
+      fl_warning  = c_fl_warning
+    TABLES
+      t_stpo      = pit_stpo_api02
+    EXCEPTIONS
+      error       = 1
+      OTHERS      = 2.
+ENDFORM.
+
+FORM csap_mat_bom_read TABLES   pit_stpo             STRUCTURE stpo_api02
+                                pit_stko             STRUCTURE stko_api02
+                       USING    VALUE(i_matnr)       TYPE matnr
+                                VALUE(i_plant)       TYPE werks_d
+                                VALUE(i_bom_usage)   TYPE stlan
+                                VALUE(i_alternative) TYPE stlal
+                                VALUE(i_valid_from)  TYPE csap_mbom-datuv.
+  REFRESH: pit_stpo, pit_stko.
+  CALL FUNCTION 'CSAP_MAT_BOM_READ'
+    EXPORTING
+      material    = i_matnr
+      plant       = i_plant
+      bom_usage   = i_bom_usage
+      alternative = i_alternative
+      valid_from  = i_valid_from
+    TABLES
+      t_stpo      = pit_stpo
+      t_stko      = pit_stko
+    EXCEPTIONS
+      error       = 1
+      OTHERS      = 2.
+ENDFORM.
+
+FORM csap_mat_bom_create TABLES   pit_stpo            STRUCTURE stpo_api01
+                         USING    VALUE(i_material)   TYPE csap_mbom-matnr
+                                  VALUE(i_plant)      TYPE csap_mbom-werks
+                                  VALUE(i_bom_usage)  TYPE csap_mbom-stlan
+                                  VALUE(i_valid_from) TYPE csap_mbom-datuv
+                                  VALUE(i_stko)       TYPE stko_api01
+                         CHANGING VALUE(c_fl_warning) TYPE capiflag-flwarning
+                                  VALUE(c_bom_no)     TYPE stko_api02-bom_no.
+  CLEAR: c_fl_warning, c_bom_no.
+
+  CALL FUNCTION 'CSAP_MAT_BOM_CREATE'
+    EXPORTING
+      material           = i_material
+      plant              = i_plant
+      bom_usage          = i_bom_usage
+      valid_from         = i_valid_from "bom_datuv  "ext_date
+      i_stko             = i_stko
+*      fl_commit_and_wait = 'X'
+*      fl_default_values = ''
+    IMPORTING
+      fl_warning         = c_fl_warning
+      bom_no             = c_bom_no
+    TABLES
+      t_stpo             = pit_stpo
+    EXCEPTIONS
+      error              = 1
+      OTHERS             = 2.
+ENDFORM.
+
+FORM csap_bom_item_maintain USING    VALUE(i_api_stpo)   TYPE stpo_api02
+                            CHANGING VALUE(c_fl_warning) TYPE flwarning.
+  DATA o_stpo TYPE stpo_api02.
+
+  CLEAR c_fl_warning.
+  CALL FUNCTION 'CSAP_BOM_ITEM_MAINTAIN'
+    EXPORTING
+      i_stpo     = i_api_stpo
+    IMPORTING
+      o_stpo     = o_stpo
+      fl_warning = c_fl_warning
+    EXCEPTIONS
+      error      = 1
+      OTHERS     = 2.
+ENDFORM.
+
+FORM csap_mat_bom_open TABLES   pit_stpo             STRUCTURE stpo_api02
+                       USING    VALUE(i_matnr)       TYPE matnr
+                                VALUE(i_plant)       TYPE werks_d
+                                VALUE(i_bom_usage)   TYPE stlan
+                                VALUE(i_alternative) TYPE stlal
+                                VALUE(i_valid_from)  TYPE csap_mbom-datuv
+                       CHANGING VALUE(c_stko)        TYPE stko_api02.
+  REFRESH pit_stpo.
+  CLEAR c_stko.
+  CALL FUNCTION 'CSAP_MAT_BOM_OPEN'
+    EXPORTING
+      material    = i_matnr
+      plant       = i_plant
+      bom_usage   = i_bom_usage
+      alternative = i_alternative
+      valid_from  = i_valid_from
+    IMPORTING
+      o_stko      = c_stko
+    TABLES
+      t_stpo      = pit_stpo
+    EXCEPTIONS
+      error       = 1
+      OTHERS      = 2.
+ENDFORM.
+
+FORM csap_mat_bom_maintain TABLES pit_stpo             STRUCTURE stpo_api03
+                           USING  VALUE(i_matnr)       TYPE matnr
+                                  VALUE(i_plant)       TYPE werks_d
+                                  VALUE(i_bom_usage)   TYPE stlan
+                                  VALUE(i_alternative) TYPE stlal
+                                  VALUE(i_stko)        TYPE stko_api01.
+  CALL FUNCTION 'CSAP_MAT_BOM_MAINTAIN'
+    EXPORTING
+      material    = i_matnr
+      plant       = i_plant
+      bom_usage   = i_bom_usage
+      alternative = i_alternative
+      i_stko      = i_stko
+*      fl_no_change_doc =
+    TABLES
+      t_stpo      = pit_stpo
+    EXCEPTIONS
+      error       = 1
+      OTHERS      = 2.
+ENDFORM.
+
+FORM csap_mat_bom_close USING VALUE(i_flcommwait) TYPE flcommwait.
+  CALL FUNCTION 'CSAP_MAT_BOM_CLOSE'
+    EXPORTING
+      fl_commit_and_wait = i_flcommwait
+    EXCEPTIONS
+      error              = 1
+      OTHERS             = 2.
+ENDFORM.
+
+FORM cs_bt_document_update USING VALUE(i_bom) LIKE zstr_mat
+                                 VALUE(i_tot) LIKE zstr_tot.
+  DATA: v_csname TYPE c LENGTH 5 VALUE 'STKOB',
+        wa_stkob TYPE stkob.
+
+  CLEAR wa_stkob.
+  SELECT SINGLE * INTO CORRESPONDING FIELDS OF wa_stkob FROM stko
+   WHERE stlty = 'M'
+     AND stlnr = i_bom-stlnr
+     AND stlal = i_bom-stlal.
+
+  IF sy-subrc = 0.
+    wa_stkob-aedat = sy-datum.
+    wa_stkob-aenam = sy-uname.
+    wa_stkob-bmeng = i_tot-menge1.
+    wa_stkob-ltxps = 0.
+    wa_stkob-datub = '99991231'.
+    wa_stkob-aenkz = 'X'.
+    wa_stkob-selkz = 'X'.
+*--------------------------------------------------------------------*
+*  CALL FUNCTION 'CS_BT_DOCUMENT_READ'
+*    EXPORTING
+*      ename  = v_csname
+*      etabix = 1
+*    IMPORTING
+*      adocument = wa_stkob
+*      asubrc    = v_subrc.
+*  IF sy-subrc = 0.
+*    wa_stkob-aedat = sy-datum.
+*    wa_stkob-aenam = sy-uname.
+*    wa_stkob-bmeng = i_tot-menge1.
+*--------------------------------------------------------------------*
+    CALL FUNCTION 'CS_BT_DOCUMENT_UPDATE'
+      EXPORTING
+        edocument = wa_stkob
+        ename     = v_csname
+        etabix    = 1
+        evbkz     = 'U'.  "  CS_BT_DOCUMENT_UPDATE
+  ENDIF.
+ENDFORM.
+
+FORM cs01 USING    VALUE(i_mat1)  LIKE zstr_mat
+                   VALUE(i_mat2)  LIKE zstr_mat
+                   VALUE(i_mat3)  LIKE zstr_mat
+          CHANGING VALUE(c_subrc) TYPE sysubrc
+                   VALUE(c_bom)   LIKE zstr_mat.
+  DATA: BEGIN OF zstr_tmplst,
+          component LIKE stpo_api01-component,
+          comp_qty  LIKE stpo-menge,
+        END OF zstr_tmplst.
+
+  DATA: it_tmplst LIKE TABLE OF zstr_tmplst,
+        wa_tmplst LIKE zstr_tmplst.
+
+  DATA: it_stpo_api01 TYPE TABLE OF stpo_api01,
+        it_message    TYPE TABLE OF messages,
+        it_mtab       TYPE esp1_message_tab_type.
+
+  DATA: "wa_stko_api01 TYPE stko_api01,
+        wa_stpo_api01 TYPE stpo_api01,
+        fl_warning    TYPE capiflag-flwarning,
+        bom_no        TYPE stko_api02-bom_no,
+        wa_message    TYPE messages,
+        wa_mtab       LIKE LINE OF it_mtab,
+
+        v_pos_qty     TYPE stpo-menge,
+        v_item_id     TYPE n LENGTH 8,
+        v_item_no     TYPE n LENGTH 4,
+        msg_ok        TYPE char50.
+
+  CASE focus_bom.
+    WHEN 1.
+      c_bom = i_mat1.
+    WHEN 2.
+      c_bom = i_mat2.
+    WHEN 3.
+      c_bom = i_mat3.
+  ENDCASE.
+  c_bom-stlan = '1'.
+  c_bom-stlal = '01'.
+
+  CLEAR wa_stko_api01.
+*  wa_stko_api01-base_quan  = '1000'.
+  wa_stko_api01-base_unit  = 'G'.
+  wa_stko_api01-bom_status = 1.
+*  alt_text
+*  laboratory
+*  delete_ind
+  IF c_bom-mtart = 'ZFER'.
+    wa_stko_api01-bom_text = i_mat1-matnr.
+    SELECT SINGLE bname INTO wa_stko_api01-alt_text FROM zugpo_aut
+      WHERE stlbe = i_mat1-stlbe.
+  ENDIF.
+  wa_stko_api01-auth_group = wa_gpoaut-stlbe.
+  PERFORM total_line CHANGING zstr_tot.
+  CASE focus_bom.
+    WHEN 1.
+      wa_stko_api01-base_quan = zstr_tot-menge1.
+    WHEN 2.
+      wa_stko_api01-base_quan = zstr_tot-menge2.
+    WHEN 3.
+      wa_stko_api01-base_quan = zstr_tot-menge3.
+  ENDCASE.
+
+  SORT it_pos BY maktx.
+* >> Lst. temporal p/collect
+  REFRESH it_tmplst.
+  LOOP AT it_pos INTO wa_pos.
+    CLEAR: wa_tmplst, v_pos_qty.
+    IF ( focus_bom = '1' AND wa_pos-menge1 > 0 ).
+      v_pos_qty = wa_pos-menge1.
+    ELSEIF ( focus_bom = '2' AND wa_pos-menge2 > 0 ).
+      v_pos_qty = wa_pos-menge2.
+    ELSEIF ( focus_bom = '3' AND wa_pos-menge3 > 0 ).
+      v_pos_qty = wa_pos-menge3.
+    ENDIF.
+    wa_tmplst-component = wa_pos-idnrk.
+    wa_tmplst-comp_qty  = v_pos_qty.
+    COLLECT wa_tmplst INTO it_tmplst.
+  ENDLOOP.
+* << Lst. temporal p/collect
+* >> Llenar stpo_api01
+  DELETE it_tmplst WHERE comp_qty = 0.
+  IF NOT it_tmplst[] IS INITIAL.
+    CLEAR v_item_no.
+    REFRESH it_stpo_api01.
+    LOOP AT it_tmplst INTO wa_tmplst.
+      CLEAR wa_stpo_api01.
+      v_item_no = v_item_no + 10.
+      UNPACK v_item_no TO v_item_no.
+      wa_stpo_api01-item_categ = 'L'.
+      wa_stpo_api01-item_no    = v_item_no.
+      wa_stpo_api01-component  = wa_tmplst-component.
+      wa_stpo_api01-comp_qty   = wa_tmplst-comp_qty.
+      wa_stpo_api01-comp_unit  = 'G'.
+      wa_stpo_api01-rel_cost   = 'X'.
+      wa_stpo_api01-rel_prod   = 'X'.
+      APPEND wa_stpo_api01 TO it_stpo_api01.
+    ENDLOOP.
+    REFRESH it_tmplst.
+* <<  Llenar stpo_api01
+    PERFORM calo_init_api.
+
+    PERFORM convert_date_to_external USING    sy-datum
+                                     CHANGING bom_datuv.
+
+    PERFORM csap_mat_bom_create TABLES   it_stpo_api01
+                                USING    c_bom-matnr
+                                         c_bom-werks
+                                         c_bom-stlan
+                                         bom_datuv
+                                         wa_stko_api01
+                                CHANGING fl_warning
+                                         bom_no.
+    c_subrc = sy-subrc.
+    IF c_subrc <> 0.
+      PERFORM calo_log_read_messages TABLES it_message.
+      REFRESH it_mtab.
+      LOOP AT it_message INTO wa_message.
+        CLEAR wa_mtab.
+        wa_mtab-msgid = wa_message-msg_id.
+        wa_mtab-msgty = wa_message-msg_type.
+        wa_mtab-msgno = wa_message-msg_no.
+        wa_mtab-msgv1 = wa_message-msg_v1.
+        wa_mtab-msgv2 = wa_message-msg_v2.
+        wa_mtab-msgv3 = wa_message-msg_v3.
+        wa_mtab-msgv4 = wa_message-msg_v4.
+        APPEND wa_mtab TO it_mtab.
+      ENDLOOP.
+      PERFORM c14z_messages_show_as_popup TABLES it_mtab.
+    ELSE.
+      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+        EXPORTING
+          wait = 'X'.
+      c_bom-stlnr = bom_no.
+      CLEAR msg_ok.
+      CONCATENATE 'Lista de material' bom_no 'creada.' INTO msg_ok SEPARATED BY space.
+      MESSAGE msg_ok TYPE 'S'.
+    ENDIF.        "<< erros
+  ELSE.
+    MESSAGE 'Se borran cantidades en 0, no se graba lista' TYPE 'I' DISPLAY LIKE 'E'.
+    c_subrc = 1.
+  ENDIF.        "<< it_stpo_api01[]?
+ENDFORM.
+
+FORM cs02 USING    VALUE(i_mat1)  LIKE zstr_mat
+                   VALUE(i_mat2)  LIKE zstr_mat
+                   VALUE(i_mat3)  LIKE zstr_mat
+          CHANGING VALUE(c_subrc) TYPE sysubrc
+                   VALUE(c_bom)   LIKE zstr_mat.
+
+  DATA: it_message  TYPE TABLE OF messages,
+        it_mtab     TYPE esp1_message_tab_type.
+
+  DATA: item_no     TYPE stpo_api02-item_no,
+        v_idx       TYPE i,
+        v_flwarning TYPE capiflag-flwarning,
+        wa_message  TYPE messages,
+        wa_mtab     LIKE LINE OF it_mtab.
+
+  CASE focus_bom.
+    WHEN 1.
+      c_bom = i_mat1.
+    WHEN 2.
+      c_bom = i_mat2.
+    WHEN 3.
+      c_bom = i_mat3.
+  ENDCASE.
+
+  PERFORM calo_init_api.
+
+  PERFORM convert_date_to_external USING    sy-datum
+                                   CHANGING bom_datuv.  "ext_date.
+
+  PERFORM csap_mat_bom_open TABLES   it_stpo_api02
+                            USING    c_bom-matnr
+                                     c_bom-werks
+                                     c_bom-stlan
+                                     c_bom-stlal
+                                     bom_datuv  "ext_date
+                            CHANGING wa_stko_api02.
+*--- NRHA 060917
+  SORT it_stpo_api02 BY item_no DESCENDING.
+  READ TABLE it_stpo_api02 INTO wa_stpo_api02 INDEX 1.
+  IF sy-subrc = 0.
+    item_no = wa_stpo_api02-item_no.
+  ENDIF.
+*Asigna el no. de item
+  CLEAR v_idx.
+  SORT it_pos BY index posnr.
+*Marca los elementos a borrar y asigna indice a los válidos
+  LOOP AT it_pos INTO wa_pos.
+    v_idx = v_idx + 1.
+
+    IF wa_pos-idnrk IS INITIAL OR wa_pos-menge1 IS INITIAL.
+      wa_pos-icon01 = '@11@'.
+*      wa_pos-menge1 = 0.
+    ELSEIF wa_pos-posnr IS INITIAL.
+      item_no      = item_no + 10.
+*      wa_pos-posnr = item_no.
+      UNPACK item_no TO wa_pos-posnr.
+    ENDIF.
+    MODIFY it_pos FROM wa_pos INDEX v_idx.
+  ENDLOOP.
+  DELETE it_pos WHERE icon01 IS NOT INITIAL AND posnr IS INITIAL.
+  IF NOT it_pos[] IS INITIAL.
+    SORT it_pos BY posnr.
+    SORT it_stpo_api02 BY item_no.
+
+    CLEAR v_idx.
+    LOOP AT it_pos INTO wa_pos.
+      CLEAR wa_stpo_api02.
+      v_idx = v_idx + 1.
+      READ TABLE it_stpo_api02 INTO wa_stpo_api02 WITH KEY item_no = wa_pos-posnr.
+      IF sy-subrc = 0.
+*Ya existe
+        IF NOT wa_pos-icon01 IS INITIAL.
+          wa_stpo_api02-fldelete = 'X'.
+        ELSE.
+          wa_stpo_api02-comp_qty = wa_pos-menge1.
+        ENDIF.        "<< delete?
+      ELSE.
+*Nuevo
+        wa_stpo_api02-item_no    = wa_pos-posnr.
+        wa_stpo_api02-item_categ = 'L'.
+        wa_stpo_api02-component  = wa_pos-idnrk.
+        wa_stpo_api02-comp_qty   = wa_pos-menge1.
+        wa_stpo_api02-comp_unit  = 'G'.
+        wa_stpo_api02-rel_cost   = 'X'.
+        wa_stpo_api02-rel_prod   = 'X'.
+      ENDIF.        "<< original?
+
+      PERFORM csap_bom_item_maintain USING    wa_stpo_api02
+                                     CHANGING v_flwarning.
+    ENDLOOP.
+  ENDIF.        "<< it_pos[]?
+  PERFORM cs_bt_document_update USING c_bom
+                                      zstr_tot.
+  PERFORM csap_mat_bom_close USING 'X'.
+  IF sy-subrc <> 0.
+    PERFORM calo_log_read_messages TABLES it_message.
+    REFRESH it_mtab.
+    LOOP AT it_message INTO wa_message.
+      CLEAR wa_mtab.
+      wa_mtab-msgid = wa_message-msg_id.
+      wa_mtab-msgty = wa_message-msg_type.
+      wa_mtab-msgno = wa_message-msg_no.
+      wa_mtab-msgv1 = wa_message-msg_v1.
+      wa_mtab-msgv2 = wa_message-msg_v2.
+      wa_mtab-msgv3 = wa_message-msg_v3.
+      wa_mtab-msgv4 = wa_message-msg_v4.
+      APPEND wa_mtab TO it_mtab.
+    ENDLOOP.
+    PERFORM c14z_messages_show_as_popup TABLES it_mtab.
+  ENDIF.        "<< erros
+ENDFORM.
+*--------------------------------------------------------------------*
+FORM cs01_by_pos USING    VALUE(i_pos)    TYPE ty_pos
+                 CHANGING VALUE(c_bom)    LIKE zstr_mat
+                          VALUE(c_subrc)  TYPE sysubrc.
+  DATA: it_stpo_api01 TYPE TABLE OF stpo_api01,
+        it_message    TYPE TABLE OF messages,
+        it_mtab       TYPE esp1_message_tab_type.
+
+  DATA: wa_stko_api01 TYPE stko_api01,
+        wa_stpo_api01 TYPE stpo_api01,
+        fl_warning    TYPE capiflag-flwarning,
+        bom_no        TYPE stko_api02-bom_no,
+        wa_message    TYPE messages,
+        wa_mtab       LIKE LINE OF it_mtab,
+
+        msg_ok        TYPE char50.
+
+  CLEAR: c_subrc, wa_stko_api01.
+  c_bom-stlan = '1'.
+  c_bom-stlal = '01'.
+
+  wa_stko_api01-base_unit  = 'G'.
+  wa_stko_api01-bom_status = 1.
+*  alt_text
+*  laboratory
+*  delete_ind
+  wa_stko_api01-auth_group = wa_gpoaut-stlbe.
+  wa_stko_api01-base_quan  = i_pos-menge1.
+
+  CLEAR wa_stpo_api01.
+  wa_stpo_api01-item_categ = 'L'.
+  wa_stpo_api01-item_no    = 10.
+  wa_stpo_api01-component  = i_pos-idnrk.
+  wa_stpo_api01-comp_qty   = i_pos-menge1.
+  wa_stpo_api01-comp_unit  = 'G'.
+  wa_stpo_api01-rel_cost   = 'X'.
+  wa_stpo_api01-rel_prod   = 'X'.
+  APPEND wa_stpo_api01 TO it_stpo_api01.
+*--------------------------------------------------------------------*
+*  PERFORM calo_init_api.
+*
+*  PERFORM convert_date_to_external USING    sy-datum
+*                                   CHANGING bom_datuv.
+*--------------------------------------------------------------------*
+  PERFORM csap_mat_bom_create TABLES   it_stpo_api01
+                              USING    c_bom-matnr
+                                       c_bom-werks
+                                       c_bom-stlan
+                                       bom_datuv
+                                       wa_stko_api01
+                              CHANGING fl_warning
+                                       bom_no.
+  c_subrc = sy-subrc.
+  IF c_subrc = 0.
+    c_bom-stlnr = bom_no.
+    c_bom-stlbe = wa_gpoaut-stlbe.
+    CLEAR msg_ok.
+    CONCATENATE 'Lista de material' bom_no 'creada.' INTO msg_ok SEPARATED BY space.
+    MESSAGE msg_ok TYPE 'S'.
+  ENDIF.        "<< errors
+ENDFORM.
+
+FORM cs02_by_pos USING    VALUE(i_mat)      LIKE zstr_mat
+                          VALUE(i_pos)      TYPE ty_pos
+                          VALUE(i_fldelete) TYPE stpo_api02-fldelete
+                 CHANGING VALUE(c_subrc)    TYPE sysubrc
+                          VALUE(c_item_no)  TYPE stpo_api02-item_no.
+
+  DATA: item_no     TYPE stpo_api02-item_no,
+        v_idx       TYPE i,
+        v_flwarning TYPE capiflag-flwarning,
+        ls_tot      LIKE zstr_tot.
+*--------------------------------------------------------------------*
+  PERFORM csap_mat_bom_open TABLES   it_stpo_api02
+                            USING    i_mat-matnr
+                                     i_mat-werks
+                                     i_mat-stlan
+                                     i_mat-stlal
+                                     bom_datuv
+                            CHANGING wa_stko_api02.
+*--------------------------------------------------------------------*
+  IF NOT i_pos-posnr IS INITIAL.
+*Upd/Del
+    READ TABLE it_stpo_api02 INTO wa_stpo_api02 WITH KEY item_no = i_pos-posnr.
+    IF sy-subrc = 0.
+      IF i_fldelete IS INITIAL.
+*Upd
+        wa_stpo_api02-comp_qty  = i_pos-menge1.
+      ELSE.
+*Del
+        wa_stpo_api02-fldelete  = i_fldelete.
+      ENDIF.        "<< fldelete?
+      MODIFY it_stpo_api02 FROM wa_stpo_api02 INDEX sy-tabix.
+    ENDIF.        "<< stpo_api02?
+  ELSE.
+*New
+    SORT it_stpo_api02 BY item_no DESCENDING.
+    READ TABLE it_stpo_api02 INTO wa_stpo_api02 INDEX 1.
+    IF sy-subrc = 0.
+      item_no = wa_stpo_api02-item_no + 10.
+      UNPACK item_no TO item_no.
+
+      CLEAR wa_stpo_api02.
+      wa_stpo_api02-item_categ = 'L'.
+      wa_stpo_api02-item_no    = item_no.
+      wa_stpo_api02-component  = i_pos-idnrk.
+      wa_stpo_api02-comp_qty   = i_pos-menge1.
+      wa_stpo_api02-comp_unit  = 'G'.
+      wa_stpo_api02-rel_cost   = 'X'.
+      wa_stpo_api02-rel_prod   = 'X'.
+      APPEND wa_stpo_api02 TO it_stpo_api02.
+    ENDIF.        "<< last item_no
+  ENDIF.        "<< posnr?
+
+  PERFORM csap_bom_item_maintain USING    wa_stpo_api02
+                                 CHANGING v_flwarning.
+*--> 03OCT18-OABG:Actualizar cant. base
+*  CLEAR ls_tot.
+*  LOOP AT it_stpo_api02 INTO wa_stpo_api02 WHERE fldelete IS INITIAL.
+*    ls_tot-menge1 = ls_tot-menge1 + wa_stpo_api02-comp_qty.
+*  ENDLOOP.
+*  PERFORM cs_bt_document_update USING mat1
+*                                      ls_tot.
+*<-- 03OCT18-OABG:Actualizar cant. base
+  PERFORM csap_mat_bom_close USING 'X'.
+  c_subrc = sy-subrc.
+
+  IF c_subrc = 0.
+    c_item_no = wa_stpo_api02-item_no.
+  ENDIF.        "<< errors
+*--> 03OCT18-OABG: Liberar memoria
+  REFRESH: it_stpo_api02.
+  CLEAR: wa_stko_api02, item_no, v_idx, v_flwarning, ls_tot.
+*<-- 03OCT18-OABG: Liberar memoria
+ENDFORM.
+
+*
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701

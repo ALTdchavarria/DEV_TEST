@@ -1,0 +1,365 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPP_INC_BEING01_F0200
+*&---------------------------------------------------------------------*
+
+FORM mm01_des USING    VALUE(i_material) TYPE ty_creatematerial
+              CHANGING VALUE(c_return)   TYPE bapiret2
+                       VALUE(c_matnr)    TYPE matnr.
+
+  DATA: it_bapi_returnmessages TYPE TABLE OF bapi_matreturn2.
+
+  DATA: wa_headdata             TYPE bapimathead,
+        wa_clientdata           TYPE bapi_mara,
+        wa_clientdatax          TYPE bapi_marax,
+        wa_plantdata            TYPE bapi_marc,
+        wa_plantdatax           TYPE bapi_marcx,
+        wa_storagelocationdata  TYPE bapi_mard,
+        wa_storagelocationdatax TYPE bapi_mardx,
+        wa_valuationdata        TYPE bapi_mbew,
+        wa_valuationdatax       TYPE bapi_mbewx,
+        wa_warehousenumberdata  TYPE bapi_mlgn,   "(ok)
+        wa_warehousenumberdatax TYPE bapi_mlgnx,  "(ok)
+        wa_salesdata            TYPE bapi_mvke,   "(ok)
+        wa_salesdatax           TYPE bapi_mvkex,  "(ok)
+        wa_bapi_makt            TYPE bapi_makt,
+        it_bapi_makt            TYPE TABLE OF bapi_makt,
+        wa_bapi_marm            TYPE bapi_marm,
+        it_bapi_marm            TYPE TABLE OF bapi_marm,
+        wa_bapi_marmx           TYPE bapi_marmx,
+        it_bapi_marmx           TYPE TABLE OF bapi_marmx,
+        wa_bapi_mltx            TYPE bapi_mltx,
+        it_bapi_mltx            TYPE TABLE OF bapi_mltx,
+        wa_bapi_mlan            TYPE bapi_mlan,
+        it_bapi_mlan            TYPE TABLE OF bapi_mlan.
+
+  CLEAR wa_headdata.
+  wa_headdata-material        = i_material-matnr.
+  wa_headdata-ind_sector      = 'I'.               "{I: Creaciones Iguazu, F: Perfumes y esencias}
+  wa_headdata-matl_type       = 'ZDE1'.            "ZDE2'
+  wa_headdata-basic_view      = 'X'.
+*  wa_headdata-sales_view      = 'X'.  "wa_salesdata
+*  wa_headdata-purchase_view   = 'X'. "(marc) wa_plantdatax-auto_p_ord
+*  wa_headdata-mrp_view        = 'X'. "(marc)
+*  wa_headdata-forecast_view   = 'X'.
+*  wa_headdata-work_sched_view = 'X'.  "(marc)
+*  wa_headdata-prt_view        = 'X'.
+*  wa_headdata-storage_view    = 'X'.  "
+*  wa_headdata-warehouse_view  = 'X'.  ""
+*  wa_headdata-quality_view    = 'X'.
+  wa_headdata-account_view    = 'X'.  "ok being02 - wa_valuationdata
+*  wa_headdata-cost_view       = 'X'.  "ok
+
+  CLEAR wa_clientdata.
+  wa_clientdata-matl_group = i_material-matkl.  "Gpo. de artículos
+  wa_clientdata-old_mat_no = i_material-bismt.  "Np. mat. antiguo
+  wa_clientdata-base_uom   = 'G'.               "U. medida base
+*  wa_clientdata-pageformat = 'DE'.             "Ctrl. p/impresión
+  wa_clientdata-size_dim   = i_material-groes.  "Tamaño / dimensión
+  wa_clientdata-basic_matl = '53131607 - Lociones o aceites para manos o cuerp'.  "Materia
+  wa_clientdata-net_weight = ''.  "Peso neto
+  wa_clientdata-unit_of_wt = 'KG'.  "U. de peso
+  wa_clientdata-division   = '25'.  "Sector
+  wa_clientdata-prod_hier  = i_material-matkl. "Jerarquía de productos *Si
+*  wa_clientdata-batch_mgmt = ''.  "Indicador: Sujeto a bloque
+*  wa_clientdata-authoditygrouo = ''.  "[4] Gpo. de autorizaciones
+*  wa_clientdata-pvalidfrom = sy-datum.  "Fe. a partir de la cual es vál.status mat.común todos ce.
+  wa_clientdata-item_cat   = 'NORM'.  "Gpo. de tipos de posición general
+
+*  wa_clientdata-STD_DESCR  = I_MATERIAL-NORMT.    " RVEGA agregar numero de proyecto
+  wa_clientdata-DOCUMENT    = I_MATERIAL-ZEINR.    " RVEGA agregar numero de proyecto
+
+  CLEAR wa_clientdatax.
+  wa_clientdatax-matl_group = 'X'.
+  wa_clientdatax-old_mat_no = 'X'.
+  wa_clientdatax-base_uom   = 'X'.
+*  wa_clientdatax-pageformat = 'X'.
+  wa_clientdatax-size_dim   = 'X'.
+  wa_clientdatax-basic_matl = 'X'.
+  wa_clientdatax-net_weight = 'X'.
+  wa_clientdatax-unit_of_wt = 'X'.
+  wa_clientdatax-division   = 'X'.
+  wa_clientdatax-prod_hier  = 'X'.
+*  wa_clientdatax-pvalidfrom = 'X'.
+  wa_clientdatax-item_cat   = 'X'.
+
+*  wa_clientdatax-STD_DESCR  = 'X'.                " RVEGA agregar numero de proyecto
+  wa_clientdataX-DOCUMENT   = 'X'.                " RVEGA agregar numero de proyecto
+
+  CLEAR wa_valuationdata.
+  wa_valuationdata-val_area   = const_werks.  "'IGUA'.
+*  wa_valuationdata-val_type   = space.
+  wa_valuationdata-price_ctrl = 'S'.          "Indicador de control de precios
+  wa_valuationdata-std_price  = 0.            "Precio estándar
+  wa_valuationdata-price_unit = 1.            "Cantidad base
+  wa_valuationdata-val_class  = '4350'.       "Categoría de valoración
+
+  CLEAR wa_valuationdatax.
+  wa_valuationdatax-val_area   = const_werks.
+  wa_valuationdatax-price_ctrl = 'X'.
+  wa_valuationdatax-std_price  = 'X'.
+  wa_valuationdatax-price_unit = 'X'.
+  wa_valuationdatax-val_class  = 'X'.
+
+  REFRESH it_bapi_makt.
+  CLEAR wa_bapi_makt.
+  wa_bapi_makt-langu     = 'S'.
+  wa_bapi_makt-matl_desc = i_material-maktx.
+  APPEND wa_bapi_makt TO it_bapi_makt.
+
+  CLEAR wa_bapi_makt.
+  wa_bapi_makt-langu     = 'E'.
+  wa_bapi_makt-matl_desc = i_material-maktx.
+  APPEND wa_bapi_makt TO it_bapi_makt.
+
+  CLEAR: wa_plantdata, wa_plantdatax,
+         wa_storagelocationdata, wa_storagelocationdatax,
+         wa_warehousenumberdata, wa_warehousenumberdatax,
+         wa_salesdata, wa_salesdatax, wa_bapi_marm, wa_bapi_marmx,
+         wa_bapi_mlan.
+  REFRESH: it_bapi_marm, it_bapi_marmx, it_bapi_mlan.
+
+  PERFORM material_savedata TABLES   it_bapi_makt
+                                     it_bapi_marm
+                                     it_bapi_marmx
+                                     it_bapi_mltx
+                                     it_bapi_mlan
+                                     it_bapi_returnmessages
+                            USING    wa_headdata
+                                     wa_clientdata
+                                     wa_clientdatax
+                                     wa_plantdata
+                                     wa_plantdatax
+                                     wa_storagelocationdata
+                                     wa_storagelocationdatax
+                                     wa_valuationdata
+                                     wa_valuationdatax
+                                     wa_warehousenumberdata
+                                     wa_warehousenumberdatax
+                                     wa_salesdata
+                                     wa_salesdatax
+                            CHANGING c_return
+                                     c_matnr.
+
+ENDFORM.
+
+FORM material_get_detail TABLES   pit_tline          STRUCTURE tline
+                         USING    VALUE(i_matnr)     TYPE matnr
+                         CHANGING VALUE(c_insmat)    TYPE ty_creatematerial
+                                  VALUE(c_matdevcod) TYPE ty_matdevcode.
+  DATA: wa_matdoa TYPE bapimatdoa,
+        wa_return TYPE bapireturn,
+        wa_thead  TYPE thead.
+
+  CLEAR: wa_matdoa, wa_return, c_matdevcod.
+  CALL FUNCTION 'BAPI_MATERIAL_GET_DETAIL'
+    EXPORTING
+      material              = i_matnr
+      plant                 = const_werks
+    IMPORTING
+      material_general_data = wa_matdoa
+      return                = wa_return.
+  IF sy-subrc = 0.
+    IF wa_return-type = 'S'.
+      c_matdevcod-iniciales = i_matnr(2).
+      c_matdevcod-codigo    = i_matnr+2(5).
+      c_matdevcod-ensayo    = i_matnr+7(1). "(2).
+*      c_insmat-matnr = i_matnr.
+      CONCATENATE c_matdevcod-iniciales c_matdevcod-codigo c_matdevcod-ensayo
+             INTO c_insmat-matnr.
+      c_insmat-maktx = wa_matdoa-matl_desc.
+      c_insmat-meins = wa_matdoa-base_uom.
+      c_insmat-matkl = wa_matdoa-matl_group.
+      c_insmat-bismt = wa_matdoa-old_mat_no.
+      c_insmat-groes = wa_matdoa-size_dim.
+
+*      SELECT SINGLE NORMT INTO c_insmat-NORMT FROM mara
+*      WHERE matnr = i_matnr.
+
+      SELECT SINGLE ZEINR INTO c_insmat-ZEINR FROM mara    " RVEGA para agregar numero de proyecto
+      WHERE matnr = i_matnr.
+
+
+      CLEAR wa_thead.
+      wa_thead-tdobject   = 'MATERIAL'.
+      wa_thead-tdname     = i_matnr.
+      wa_thead-tdid       = 'GRUN'.
+      wa_thead-tdspras    = sy-langu.
+*      wa_thead-tdlinesize = '120'.
+
+*      REFRESH pit_tline.
+*      CALL FUNCTION 'READ_TEXT'
+*        EXPORTING
+**          client                  = wa_head
+*          id                      = wa_thead-tdid
+*          language                = wa_thead-tdspras
+*          name                    = wa_thead-tdname
+*          object                  = wa_thead-tdobject
+*        TABLES
+*          lines                   = pit_tline
+*        EXCEPTIONS
+*          id                      = 1
+*          language                = 2
+*          name                    = 3
+*          not_found               = 4
+*          object                  = 5
+*          reference_check         = 6
+*          wrong_access_to_archive = 7
+*          OTHERS                  = 8.
+      PERFORM read_text TABLES pit_tline
+                        USING  wa_thead.
+*      IF sy-subrc = 0.
+**        REFRESH it_line.
+**        LOOP AT pit_tline INTO wa_tline.
+**          CLEAR wa_line.
+**          wa_line = wa_tline-tdline.
+**          APPEND wa_line TO it_line.
+**        ENDLOOP.
+**        IF NOT it_line[] IS INITIAL.
+**          CALL METHOD obj_editor_0200->set_text_as_r3table
+**            EXPORTING
+**              table  = it_line
+**            EXCEPTIONS
+**              OTHERS = 1.
+**        ENDIF.        "<< it_line[]?
+*      ENDIF.        "<< read_text?
+    ELSE.
+      MESSAGE wa_return-message TYPE 'S' DISPLAY LIKE 'E'.
+    ENDIF.        "<< message type
+  ENDIF.        "<< material details?
+ENDFORM.
+
+FORM tline_to_editor TABLES   pit_tline       STRUCTURE tline
+                     CHANGING VALUE(c_editor) TYPE REF TO cl_gui_textedit.
+  IF NOT pit_tline[] IS INITIAL.
+    REFRESH it_line.
+    LOOP AT pit_tline INTO wa_tline.
+      CLEAR wa_line.
+      wa_line = wa_tline-tdline.
+      APPEND wa_line TO it_line.
+    ENDLOOP.
+    IF NOT it_line[] IS INITIAL.
+      CALL METHOD c_editor->set_text_as_r3table
+        EXPORTING
+          table  = it_line
+        EXCEPTIONS
+          OTHERS = 1.
+    ENDIF.        "<< it_line[]?
+  ENDIF.
+ENDFORM.
+
+FORM save_editor_text TABLES pit_tline      STRUCTURE tline
+                      USING  VALUE(i_matnr) TYPE matnr.
+  DATA: wa_thead TYPE thead.
+
+  REFRESH it_line.
+  CALL METHOD obj_editor_0200->get_text_as_r3table
+*    EXPORTING
+*      only_when_modified     = ' '
+    IMPORTING
+      table                  = it_line
+    EXCEPTIONS
+      error_dp               = 1
+      error_cntl_call_method = 2
+      error_dp_create        = 3
+      potential_data_loss    = 4
+      OTHERS                 = 5.
+  IF NOT it_line[] IS INITIAL.
+    REFRESH pit_tline.
+    LOOP AT it_line INTO wa_line.
+      CLEAR wa_tline.
+      wa_tline-tdline = wa_line.
+      APPEND wa_tline TO pit_tline.
+    ENDLOOP.
+    IF NOT pit_tline[] IS INITIAL.
+      CLEAR wa_thead.
+      wa_thead-tdobject   = 'MATERIAL'.
+      wa_thead-tdname     = i_matnr.
+      wa_thead-tdid       = 'GRUN'.
+      wa_thead-tdspras    = sy-langu.
+      wa_thead-tdlinesize = '120'.
+
+      PERFORM save_text TABLES pit_tline
+                        USING  wa_thead
+                               'X'
+                               'X'.
+      IF sy-subrc = 0.
+        REFRESH: it_line, pit_tline.
+      ENDIF.
+    ENDIF.        "<< tlines?
+  ENDIF.        "<< lines?
+ENDFORM.
+
+FORM material_savedata TABLES   pit_bapi_makt                 STRUCTURE bapi_makt
+                                pit_bapi_marm                 STRUCTURE bapi_marm
+                                pit_bapi_marmx                STRUCTURE bapi_marmx
+                                "pit_bapi_mean                 STRUCTURE bapi_mean
+                                pit_bapi_mltx                 STRUCTURE bapi_mltx
+                                pit_bapi_mlan                 STRUCTURE bapi_mlan
+                                pit_bapi_returnmessages       STRUCTURE bapi_matreturn2
+                       USING    VALUE(i_headdata)             TYPE bapimathead
+                                VALUE(i_clientdata)           TYPE bapi_mara
+                                VALUE(i_clientdatax)          TYPE bapi_marax
+                                VALUE(i_plantdata)            TYPE bapi_marc
+                                VALUE(i_plantdatax)           TYPE bapi_marcx
+                                "VALUE(i_forecastparameters)   TYPE bapi_mpop
+                                "VALUE(i_forecastparametersx)  TYPE bapi_mpopx
+                                "VALUE(i_planningdata)         TYPE bapi_mpgd
+                                "VALUE(i_planningdatax)        TYPE bapi_mpgdx
+                                VALUE(i_storagelocationdata)  TYPE bapi_mard
+                                VALUE(i_storagelocationdatax) TYPE bapi_mardx
+                                VALUE(i_valuationdata)        TYPE bapi_mbew
+                                VALUE(i_valuationdatax)       TYPE bapi_mbewx
+                                VALUE(i_warehousenumberdata)  TYPE bapi_mlgn
+                                VALUE(i_warehousenumberdatax) TYPE bapi_mlgnx
+                                VALUE(i_salesdata)            TYPE bapi_mvke
+                                VALUE(i_salesdatax)           TYPE bapi_mvkex
+                       CHANGING VALUE(c_return)               TYPE bapiret2
+                                VALUE(c_new_matnr)            TYPE matnr.
+  CLEAR: c_return, c_new_matnr.
+  REFRESH pit_bapi_returnmessages.
+  CALL FUNCTION 'BAPI_MATERIAL_SAVEDATA'
+    EXPORTING
+      headdata             = i_headdata
+      clientdata           = i_clientdata
+      clientdatax          = i_clientdatax
+      plantdata            = i_plantdata
+      plantdatax           = i_plantdatax
+*      forecastparameters   = i_forecastparameters
+*      forecastparametersx  = i_forecastparametersx
+*      planningdata         = i_planningdata
+*      planningdatax        = i_planningdatax
+      storagelocationdata  = i_storagelocationdata
+      storagelocationdatax = i_storagelocationdatax
+      valuationdata        = i_valuationdata
+      valuationdatax       = i_valuationdatax
+      warehousenumberdata  = i_warehousenumberdata
+      warehousenumberdatax = i_warehousenumberdatax
+      salesdata            = i_salesdata
+      salesdatax           = i_salesdatax
+*      storagetypedata      = i_storagetypedata
+*      storagetypedatax     = i_storagetypedatax
+    IMPORTING
+      return               = c_return
+    TABLES
+      materialdescription  = pit_bapi_makt
+      unitsofmeasure       = pit_bapi_marm
+      unitsofmeasurex      = pit_bapi_marmx
+*      internationalartnos  = pit_bapi_mean
+      materiallongtext     = pit_bapi_mltx
+      taxclassifications   = pit_bapi_mlan
+
+      returnmessages       = pit_bapi_returnmessages.
+
+  IF c_return-type = 'S'.
+    CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+      EXPORTING
+        wait = 'X'.
+*      IMPORTING
+*        return
+*  COMMIT WORK AND WAIT.
+    c_new_matnr = c_return-message_v1.
+  ENDIF.
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701

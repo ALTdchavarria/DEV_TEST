@@ -1,0 +1,769 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPP_INC_BEING02_F0210
+*&---------------------------------------------------------------------*
+FORM mara_to_clientdata USING    VALUE(i_matnr)       TYPE matnr
+                        CHANGING VALUE(c_clientdata)  TYPE bapi_mara
+                                 VALUE(c_clientdatax) TYPE bapi_marax.
+  DATA ls_mara TYPE mara.
+  CLEAR ls_mara.
+  SELECT SINGLE * INTO ls_mara FROM mara WHERE matnr = i_matnr.
+  IF sy-subrc = 0.
+    CLEAR c_clientdata.
+    "c_clientdata-matl_group                 = ls_mara-matkl.       "Gpo. de artículos
+    "c_clientdata-old_mat_no                 = ls_mara-bismt.       "Np. mat. antiguo
+    c_clientdata-base_uom                   = ls_mara-meins.       "Unidad de medida base
+    "c_clientdata-size_dim                   = ls_mara-groes.       "Tamaño / dimensión
+    c_clientdata-basic_matl                 = ls_mara-wrkst.       "Materia ('53131607 - Lociones o aceites para manos o cuerp')
+*    c_clientdata-net_weight = ''.  "Peso neto
+*??    c_clientdata- = ls_mara-brgew.
+    c_clientdata-unit_of_wt                 = ls_mara-gewei.       "U. de peso
+    c_clientdata-division                   = ls_mara-spart.       "Sector
+    c_clientdata-prod_hier                  = ls_mara-prdha.       "Jerarquía de productos
+    c_clientdata-minremlife                 = ls_mara-mhdrz.       "Tiempo mínimo de duración restante
+    c_clientdata-shelf_life                 = ls_mara-mhdhb.       "Duración total de conservación
+    c_clientdata-period_ind_expiration_date = ls_mara-iprkz.       "Indicador período p.fe.caducidad {'D'}
+    c_clientdata-item_cat                   = ls_mara-mtpos_mara.  "Grupo de tipos de posición general
+    c_clientdata-sled_bbd                   = ls_mara-sled_bbd.    "Fecha de caducidad/Fecha de expiración
+
+    CLEAR c_clientdatax.
+    c_clientdatax-matl_group                 = 'X'.
+    c_clientdatax-old_mat_no                 = 'X'.
+    c_clientdatax-base_uom                   = 'X'.
+    c_clientdatax-size_dim                   = 'X'.
+    c_clientdatax-basic_matl                 = 'X'.
+*    c_clientdatax-net_weight = 'X'.
+    c_clientdatax-unit_of_wt                 = 'X'.
+    c_clientdatax-division                   = 'X'.
+*    c_clientdatax-pvalidfrom = 'X'.
+    c_clientdatax-prod_hier                  = 'X'.
+    c_clientdatax-minremlife                 = 'X'.
+    c_clientdatax-shelf_life                 = 'X'.
+    c_clientdatax-period_ind_expiration_date = 'X'.
+    c_clientdatax-item_cat                   = 'X'.
+    c_clientdatax-sled_bbd                   = 'X'.
+  ENDIF.        "<< mara?
+ENDFORM.
+
+FORM marc_to_plantdata USING    VALUE(i_matnr)      TYPE matnr
+                       CHANGING VALUE(c_plantdata)  TYPE bapi_marc
+                                VALUE(c_plantdatax) TYPE bapi_marcx.
+  DATA ls_marc TYPE marc.
+  CLEAR ls_marc.
+  SELECT SINGLE * INTO ls_marc FROM marc
+    WHERE werks = const_werks AND matnr = i_matnr.
+  IF sy-subrc = 0.
+    ls_marc-lfmon = sy-datum+4(2).
+    ls_marc-lfgja = sy-datum(4).
+
+    CLEAR: c_plantdata, c_plantdatax.
+    CALL FUNCTION 'MAP2E_MARC_TO_BAPI_MARC'
+      EXPORTING
+        marc                         = ls_marc
+        currency_amount_bapi_to_sap  = 'MXN'
+      CHANGING
+        bapi_marc                    = c_plantdata
+      EXCEPTIONS
+        error_converting_curr_amount = 1
+        OTHERS                       = 2.
+
+    IF sy-subrc = 0.
+      c_plantdatax-plant                  = c_plantdata-plant.
+      c_plantdatax-pur_group              = 'X'.
+      c_plantdatax-mrp_type               = 'X'.
+      c_plantdatax-mrp_ctrler             = 'X'.
+      c_plantdatax-plnd_delry             = 'X'.
+      c_plantdatax-gr_pr_time             = 'X'.
+      c_plantdatax-period_ind             = 'X'.
+      c_plantdatax-lotsizekey             = 'X'.
+      c_plantdatax-proc_type              = 'X'.
+      c_plantdatax-round_val              = 'X'.
+      c_plantdatax-dep_req_id             = 'X'.
+      c_plantdatax-alt_bom_id             = 'X'.
+      c_plantdatax-sm_key                 = 'X'.
+      c_plantdatax-backflush              = 'X'.
+      c_plantdatax-production_scheduler   = 'X'.
+      c_plantdatax-inhseprodt             = 'X'.
+      c_plantdatax-replentime             = 'X'.
+      c_plantdatax-ind_post_to_insp_stock = 'X'.
+      c_plantdatax-doc_reqd               = 'X'.
+      c_plantdatax-loadinggrp             = 'X'.
+      c_plantdatax-batch_mgmt             = 'X'.
+      c_plantdatax-availcheck             = 'X'.
+      c_plantdatax-auto_p_ord             = 'X'.
+      c_plantdatax-ppc_pl_cal             = 'X'.
+      c_plantdatax-consummode             = 'X'.
+      c_plantdatax-bwd_cons               = 'X'.
+      c_plantdatax-fwd_cons               = 'X'.
+      c_plantdatax-lot_size               = 'X'.
+      c_plantdatax-prod_unit              = 'X'.
+      c_plantdatax-prod_unit_iso          = 'X'.
+      c_plantdatax-iss_st_loc             = 'X'.
+      c_plantdatax-mrp_group              = 'X'.
+      c_plantdatax-plng_cycle             = 'X'.
+      c_plantdatax-insp_int               = 'X'.
+      c_plantdatax-plan_strgp             = 'X'.
+      c_plantdatax-determ_grp             = 'X'.
+      c_plantdatax-sloc_exprc             = 'X'.
+      c_plantdatax-prodprof               = 'X'.
+      c_plantdatax-ctrl_code              = 'X'.
+    ENDIF.        "<< marc_to_bapi_marc
+  ENDIF.        "<< marc
+ENDFORM.
+
+FORM mard_to_storagelocationdata USING    VALUE(i_matnr)                TYPE matnr
+                                 CHANGING VALUE(c_storagelocationdata)  TYPE bapi_mard
+                                          VALUE(c_storagelocationdatax) TYPE bapi_mardx.
+  DATA ls_mard TYPE mard.
+  CLEAR ls_mard.
+  SELECT SINGLE * INTO ls_mard FROM mard
+    WHERE matnr = i_matnr.
+  IF sy-subrc = 0.
+    CLEAR c_storagelocationdata.
+    c_storagelocationdata-plant        = ls_mard-werks.
+    c_storagelocationdata-stge_loc     = ls_mard-lgort.
+*    wa_storagelocationdata-mrp_ind      =
+*    wa_storagelocationdata-spec_proc    =
+*    wa_storagelocationdata-reorder_pt   =
+*    wa_storagelocationdata-repl_qty     =
+*    wa_storagelocationdata-stge_bin     =
+*    wa_storagelocationdata-pickg_area   =
+*    wa_storagelocationdata-inv_corr_fac =
+
+    CLEAR c_storagelocationdatax.
+    c_storagelocationdatax-plant    = ls_mard-werks.
+    c_storagelocationdatax-stge_loc = ls_mard-lgort.
+  ENDIF.
+ENDFORM.
+
+FORM marm_to_bapi_marm TABLES pit_bapi_marm  STRUCTURE bapi_marm
+                              pit_bapi_marmx STRUCTURE bapi_marmx
+                       USING  VALUE(i_matnr) TYPE matnr.
+
+  DATA: lt_marm       TYPE TABLE OF marm,
+        ls_marm       TYPE marm,
+        ls_bapi_marm  TYPE bapi_marm,
+        ls_bapi_marmx TYPE bapi_marmx.
+  REFRESH lt_marm.
+  SELECT * INTO TABLE lt_marm FROM marm
+    WHERE matnr = i_matnr.
+  IF sy-subrc = 0.
+    REFRESH: pit_bapi_marm, pit_bapi_marmx.
+    LOOP AT lt_marm INTO ls_marm.
+      CLEAR: ls_bapi_marm, ls_bapi_marmx.
+      "wa_marm-matnr.  "Número de material
+      ls_bapi_marm-alt_unit   = ls_marm-meinh.  "Unidad medida alternativa p.unidad medida almacén
+      ls_bapi_marm-numerator  = ls_marm-umrez.  "Numerador para la conversión en unidades de medida base
+      ls_bapi_marm-denominatr = ls_marm-umren.  "Denominador para la conversión en unidades de medida base
+      ls_bapi_marm-gross_wt   = ls_marm-brgew.  "Peso bruto
+      ls_bapi_marm-unit_of_wt = ls_marm-gewei.  "Unidad de peso
+
+      ls_bapi_marmx-alt_unit   = 'X'.
+      ls_bapi_marmx-numerator  = 'X'.
+      ls_bapi_marmx-denominatr = 'X'.
+      ls_bapi_marmx-gross_wt   = 'X'.
+      ls_bapi_marmx-unit_of_wt = 'X'.
+
+      APPEND ls_bapi_marm TO pit_bapi_marm.
+      APPEND ls_bapi_marmx TO pit_bapi_marmx.
+    ENDLOOP.
+  ENDIF.        "<< marm?
+ENDFORM.
+
+FORM mbew_to_valuationdata USING    VALUE(i_matnr)          TYPE matnr
+                           CHANGING VALUE(c_valuationdata)  TYPE bapi_mbew
+                                    VALUE(c_valuationdatax) TYPE bapi_mbewx.
+  DATA ls_mbew TYPE mbew.
+  CLEAR ls_mbew.
+  SELECT SINGLE * INTO ls_mbew FROM mbew
+    WHERE lvorm <> 'X'
+      AND matnr =  i_matnr.
+  IF sy-subrc = 0.
+    CLEAR c_valuationdata.
+    c_valuationdata-val_area   = ls_mbew-bwkey. "Ámbito de valoración
+    "c_mbew-lbkum. "Stock total valorado
+    "c_mbew-salk3. "Valor del stock valorado total
+    c_valuationdata-price_ctrl = ls_mbew-vprsv. "Indicador de control de precios
+    c_valuationdata-moving_pr  = ls_mbew-verpr. "Precio medio variable/Precio interno periódico
+    c_valuationdata-std_price  = ls_mbew-stprs. "Precio estándar
+    c_valuationdata-price_unit = ls_mbew-peinh. "Cantidad base
+    c_valuationdata-val_class  = ls_mbew-bklas. "Categoría de valoración
+    "c_mbew-salkv. "ValorEnBaseAlPrecioPromedioVariable(SóloSiControlPrecios S)
+    c_valuationdata-pr_ctrl_pp = ls_mbew-vmvpr. "Indicador de control de precios del periodo precedente
+    c_valuationdata-pr_unit_pp = ls_mbew-vmpei. "Cantidad base del periodo anterior
+    c_valuationdata-vclass_pp  = ls_mbew-vmbkl. "Categoría de valoración del periodo anterior
+    c_valuationdata-pr_ctrl_py = ls_mbew-vjvpr. "Indicador de control de precios del año precedente
+    c_valuationdata-pr_unit_py = ls_mbew-vjpei. "Cantidad base del año anterior
+    c_valuationdata-vclass_py  = ls_mbew-vjbkl. "Categoría de valoración del año anterior
+    "c_mbew-lfgja. "Ejercicio del período actual << gjahr
+    "c_mbew-lfmon. "Período actual (período contable)
+    "c_mbew-stprv. "Precio anterior
+    "c_mbew-laepr. "Fecha de la útima modificación del precio
+    "c_mbew-timestamp. "Cronomarcador UTC en forma breve (AAAAMMDDhhmmss)
+    "c_mbew-kalkl. "Indicador: Cálculo previsional para el periodo actual
+    "c_mbew-pstat. "Status de actualización
+    "c_mbew-kaln1.
+    "c_mbew-kalnr.
+    c_valuationdata-qty_struct = ls_mbew-ekalr. "El material se calcula con estructura cuantitativa
+    "c_mbew-bwva2. "Variante de valoración para el cálculo de costes plan actual
+    CLEAR c_valuationdatax.
+    c_valuationdatax-val_area   = ls_mbew-bwkey.
+    c_valuationdatax-price_ctrl = 'X'.
+    c_valuationdatax-moving_pr  = 'X'.
+    c_valuationdatax-std_price  = 'X'.
+    c_valuationdatax-price_unit = 'X'.
+    c_valuationdatax-val_class  = 'X'.
+    c_valuationdatax-pr_ctrl_pp = 'X'.
+    c_valuationdatax-pr_unit_pp = 'X'.
+    c_valuationdatax-vclass_pp  = 'X'.
+    c_valuationdatax-pr_ctrl_py = 'X'.
+    c_valuationdatax-pr_unit_py = 'X'.
+    c_valuationdatax-vclass_py  = 'X'.
+    c_valuationdatax-qty_struct = 'X'.
+  ENDIF.        "<< mbew
+ENDFORM.
+
+FORM mlan_to_bapi_mlan TABLES pit_bapi_mlan  STRUCTURE bapi_mlan
+                       USING  VALUE(i_matnr) TYPE matnr.
+  DATA: lt_mlan TYPE TABLE OF mlan,
+        ls_mlan TYPE mlan,
+        ls_bapi_mlan TYPE bapi_mlan.
+  DATA: it_tstl TYPE TABLE OF tstl,
+        wa_tstl TYPE tstl.
+  REFRESH lt_mlan.
+  SELECT * INTO TABLE lt_mlan FROM mlan
+    WHERE matnr = i_matnr.
+  IF sy-subrc = 0.
+    READ TABLE lt_mlan INTO ls_mlan INDEX 1.
+* Tipos de impuesto por pais
+    REFRESH it_tstl.
+    SELECT * INTO TABLE it_tstl FROM tstl WHERE talnd = ls_mlan-aland.
+    SORT it_tstl BY lfdnr.
+    REFRESH pit_bapi_mlan.
+    LOOP AT lt_mlan INTO ls_mlan.
+      CLEAR ls_bapi_mlan.
+      ls_bapi_mlan-depcountry = ls_mlan-aland.  "País suministrador (país del cual se envía la mercancía)
+
+      READ TABLE it_tstl INTO wa_tstl INDEX 1.
+      IF sy-subrc = 0.
+        ls_bapi_mlan-tax_type_1 = wa_tstl-tatyp.
+        ls_bapi_mlan-taxclass_1 = ls_mlan-taxm1.  "Clasificación fiscal para el material
+      ENDIF.
+      READ TABLE it_tstl INTO wa_tstl INDEX 2.
+      IF sy-subrc = 0.
+        ls_bapi_mlan-tax_type_2 = wa_tstl-tatyp.
+        ls_bapi_mlan-taxclass_2 = ls_mlan-taxm2.
+      ENDIF.
+      READ TABLE it_tstl INTO wa_tstl INDEX 3.
+      IF sy-subrc = 0.
+        ls_bapi_mlan-tax_type_3 = wa_tstl-tatyp.
+        ls_bapi_mlan-taxclass_3 = ls_mlan-taxm3.
+      ENDIF.
+      READ TABLE it_tstl INTO wa_tstl INDEX 4.
+      IF sy-subrc = 0.
+        ls_bapi_mlan-tax_type_4 = wa_tstl-tatyp.
+        ls_bapi_mlan-taxclass_4 = ls_mlan-taxm4.
+      ENDIF.
+      READ TABLE it_tstl INTO wa_tstl INDEX 5.
+      IF sy-subrc = 0.
+        ls_bapi_mlan-tax_type_5 = wa_tstl-tatyp.
+        ls_bapi_mlan-taxclass_5 = ls_mlan-taxm5.
+      ENDIF.
+      READ TABLE it_tstl INTO wa_tstl INDEX 6.
+      IF sy-subrc = 0.
+        ls_bapi_mlan-tax_type_6 = wa_tstl-tatyp.
+        ls_bapi_mlan-taxclass_6 = ls_mlan-taxm6.
+      ENDIF.
+      READ TABLE it_tstl INTO wa_tstl INDEX 7.
+      IF sy-subrc = 0.
+        ls_bapi_mlan-tax_type_7 = wa_tstl-tatyp.
+        ls_bapi_mlan-taxclass_7 = ls_mlan-taxm7.
+      ENDIF.
+      READ TABLE it_tstl INTO wa_tstl INDEX 8.
+      IF sy-subrc = 0.
+        ls_bapi_mlan-tax_type_8 = wa_tstl-tatyp.
+        ls_bapi_mlan-taxclass_8 = ls_mlan-taxm8.
+      ENDIF.
+      READ TABLE it_tstl INTO wa_tstl INDEX 9.
+      IF sy-subrc = 0.
+        ls_bapi_mlan-tax_type_9 = wa_tstl-tatyp.
+        ls_bapi_mlan-taxclass_9 = ls_mlan-taxm9.
+      ENDIF.
+
+      APPEND ls_bapi_mlan TO pit_bapi_mlan.
+    ENDLOOP.
+  ENDIF.        "<< mlan?
+ENDFORM.
+
+FORM mlgn_to_warehousenumberdata USING    VALUE(i_matnr)                TYPE matnr
+                                 CHANGING VALUE(c_warehousenumberdata)  TYPE bapi_mlgn
+                                          VALUE(c_warehousenumberdatax) TYPE bapi_mlgnx.
+  DATA ls_mlgn TYPE mlgn.
+  CLEAR ls_mlgn.
+  SELECT SINGLE * INTO ls_mlgn FROM mlgn
+    WHERE lvorm <> 'X'
+      AND matnr =  i_matnr.
+  IF sy-subrc = 0.
+    CLEAR c_warehousenumberdata.
+    c_warehousenumberdata-whse_no    = ls_mlgn-lgnum.  "Núm.almacén/Complejo alm.
+    c_warehousenumberdata-stgesector = ls_mlgn-lgbkz.  "Ind. de área de almacenamiento
+    c_warehousenumberdata-placement  = ls_mlgn-ltkze.  "Ind. tipo de almacén para la entrada en stock
+    c_warehousenumberdata-withdrawal = ls_mlgn-ltkza.  "Ind. tipo de almacén para la salida de stock
+    CLEAR c_warehousenumberdatax.
+    c_warehousenumberdatax-whse_no    = ls_mlgn-lgnum.
+    c_warehousenumberdatax-stgesector = 'X'.
+    c_warehousenumberdatax-placement  = 'X'.
+    c_warehousenumberdatax-withdrawal = 'X'.
+  ENDIF.        "<< mlgn?
+ENDFORM.
+
+FORM mvke_to_salesdata USING    VALUE(i_matnr)      TYPE matnr
+                       CHANGING VALUE(c_salesdata)  TYPE bapi_mvke
+                                VALUE(c_salesdatax) TYPE bapi_mvkex.
+  DATA ls_mvke TYPE mvke.
+  CLEAR ls_mvke.
+  SELECT SINGLE * INTO ls_mvke FROM mvke
+    WHERE lvorm <> 'X'
+      AND matnr =  i_matnr.
+  IF sy-subrc = 0.
+    CLEAR c_salesdata.
+    c_salesdata-sales_org  = ls_mvke-vkorg.  "Organización de ventas
+    c_salesdata-distr_chan = ls_mvke-vtweg.  "Canal de distribución
+    c_salesdata-matl_stats = ls_mvke-versg.  "Grupo de estadísticas material
+    c_salesdata-cash_disc  = ls_mvke-sktof.  "Indicador: Derecho a descuentos
+    c_salesdata-sales_unit = ls_mvke-vrkme.  "Unidad de medida de venta
+    c_salesdata-item_cat   = ls_mvke-mtpos.  "Grupo de tipos de posición del maestro de material
+    c_salesdata-delyg_plnt = ls_mvke-dwerk.  "Centro suministrador
+    c_salesdata-mat_pr_grp = ls_mvke-kondm.  "Grupo de materiales
+    c_salesdata-acct_assgt = ls_mvke-ktgrm.  "Grupo de imputación para material
+    CLEAR c_salesdatax.
+    c_salesdatax-sales_org  = ls_mvke-vkorg.
+    c_salesdatax-distr_chan = ls_mvke-vtweg.
+    c_salesdatax-matl_stats = 'X'.
+    c_salesdatax-cash_disc  = 'X'.
+    c_salesdatax-sales_unit = 'X'.
+    c_salesdatax-item_cat   = 'X'.
+    c_salesdatax-delyg_plnt = 'X'.
+    c_salesdatax-mat_pr_grp = 'X'.
+    c_salesdatax-acct_assgt = 'X'.
+  ENDIF.        "<< mvke?
+ENDFORM.
+
+FORM makt_to_bapi_makt TABLES pit_bapi_makt  STRUCTURE bapi_makt
+                       USING  VALUE(i_maktx) TYPE maktx.
+
+  DATA ls_bapi_makt TYPE bapi_makt.
+  REFRESH pit_bapi_makt.
+  CLEAR ls_bapi_makt.
+  ls_bapi_makt-langu     = 'S'.
+  ls_bapi_makt-matl_desc = i_maktx.
+  APPEND ls_bapi_makt TO pit_bapi_makt.
+
+  CLEAR ls_bapi_makt.
+  ls_bapi_makt-langu     = 'E'.
+  ls_bapi_makt-matl_desc = i_maktx.
+  APPEND ls_bapi_makt TO pit_bapi_makt.
+ENDFORM.
+
+FORM mltx_to_bapi_mltx TABLES pit_tline      STRUCTURE tline
+                              pit_bapi_mltx  STRUCTURE bapi_mltx
+                       USING  VALUE(i_matnr) TYPE matnr.
+  DATA: wa_tline     TYPE tline,
+        wa_bapi_mltx TYPE bapi_mltx.
+
+  REFRESH pit_bapi_mltx.
+  LOOP AT pit_tline INTO wa_tline.
+    CLEAR wa_bapi_mltx.
+    wa_bapi_mltx-applobject = 'MATERIAL'.
+    wa_bapi_mltx-text_name  = i_matnr.
+    wa_bapi_mltx-text_id    = 'GRUN'.
+    wa_bapi_mltx-langu      = sy-langu.
+*    wa_bapi_mltx-langu_iso  = ''.
+    wa_bapi_mltx-format_col = wa_tline-tdformat.
+    wa_bapi_mltx-text_line  = wa_tline-tdline.
+*    wa_bapi_mltx-del_flag   = ''.
+    APPEND wa_bapi_mltx TO pit_bapi_mltx.
+  ENDLOOP.
+ENDFORM.
+
+FORM objcl_getdetail TABLES pit_allocvaluesnum    STRUCTURE bapi1003_alloc_values_num
+                            pit_allocvalueschar   STRUCTURE bapi1003_alloc_values_char
+                            pit_allocvaluescurr   STRUCTURE bapi1003_alloc_values_curr
+                            pit_return2           STRUCTURE bapiret2
+                     USING  VALUE(i_bapi1003_key) TYPE bapi1003_key.
+
+  REFRESH: pit_allocvaluesnum, pit_allocvalueschar, pit_allocvaluescurr, pit_return2.
+  CALL FUNCTION 'BAPI_OBJCL_GETDETAIL'
+    EXPORTING
+      objectkey        = i_bapi1003_key-object
+      objecttable      = i_bapi1003_key-objecttable
+      classnum         = i_bapi1003_key-classnum
+      classtype        = i_bapi1003_key-classtype
+      keydate          = i_bapi1003_key-keydate
+      unvaluated_chars = 'X'
+      language         = sy-langu
+    TABLES
+      allocvaluesnum  = pit_allocvaluesnum
+      allocvalueschar = pit_allocvalueschar
+      allocvaluescurr = pit_allocvaluescurr
+      return          = pit_return2.
+
+ENDFORM.
+
+FORM objcl_create TABLES pit_allocvaluesnum    STRUCTURE bapi1003_alloc_values_num
+                         pit_allocvalueschar   STRUCTURE bapi1003_alloc_values_char
+                         pit_allocvaluescurr   STRUCTURE bapi1003_alloc_values_curr
+                         pit_return2           STRUCTURE bapiret2
+                  USING  VALUE(i_bapi1003_key) TYPE bapi1003_key.
+  DATA classif_status TYPE bapi1003_key-status.
+  REFRESH pit_return2.
+  CALL FUNCTION 'BAPI_OBJCL_CREATE'
+    EXPORTING
+      objectkeynew    = i_bapi1003_key-object
+      objecttablenew  = i_bapi1003_key-objecttable
+      classnumnew     = i_bapi1003_key-classnum
+      classtypenew    = i_bapi1003_key-classtype
+      status          = i_bapi1003_key-status
+      keydate         = i_bapi1003_key-keydate
+    IMPORTING
+      classif_status  = classif_status
+    TABLES
+      allocvaluesnum  = pit_allocvaluesnum
+      allocvalueschar = pit_allocvalueschar
+      allocvaluescurr = pit_allocvaluescurr
+      return          = pit_return2.
+
+  IF sy-subrc = 0.
+    CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+      EXPORTING
+        wait = 'X'.
+  ENDIF.
+ENDFORM.
+
+FORM copy_bom USING    VALUE(i_matnr1) TYPE matnr
+                       VALUE(i_matnr2) TYPE matnr
+              CHANGING VALUE(c_bom)    LIKE zstr_mat
+                       VALUE(c_subrc)  TYPE sysubrc.
+
+  DATA: it_stpo_api01 TYPE TABLE OF stpo_api01,
+        wa_stpo_api01 TYPE stpo_api01,
+        v_item_no     TYPE n LENGTH 4,
+        fl_warning    TYPE capiflag-flwarning,
+        bom_no        TYPE stko_api02-bom_no,
+        msg_ok        TYPE char50.
+
+  CLEAR: mat1, mat2, mat3.
+  mat1       = c_bom.
+  mat2-matnr = i_matnr2.
+  mat2-werks = mat1-werks.
+  mat2-stlan = mat1-stlan.
+  mat2-stlal = mat1-stlal.
+  mat2-stlbe = wa_gpoaut-stlbe.
+*  mat1-matnr = i_matnr1.
+*  mat1-werks = const_werks.
+*  mat1-stlan = '1'.
+*  mat1-stlal = '01'.
+  PERFORM convert_date_to_external USING    sy-datum
+                                   CHANGING bom_datuv.
+
+  PERFORM csap_mat_bom_read TABLES   it_stpo_api02
+                                     it_stko_api02
+                            USING    mat1-matnr
+                                     mat1-werks
+                                     mat1-stlan
+                                     mat1-stlal
+                                     bom_datuv.
+*--------------------------------------------------------------------*
+* STKO
+*--------------------------------------------------------------------*
+  READ TABLE it_stko_api02 INTO wa_stko_api02 INDEX 1.
+  CLEAR wa_stko_api01.
+  wa_stko_api01-base_quan  = wa_stko_api02-base_quan.
+  wa_stko_api01-base_unit  = wa_stko_api02-base_unit.
+  wa_stko_api01-bom_status = wa_stko_api02-bom_status.
+  wa_stko_api01-alt_text   = wa_stko_api02-created_by.
+  wa_stko_api01-bom_text   = i_matnr1.  "mat1-matnr
+  wa_stko_api01-auth_group = mat2-stlbe.
+*--------------------------------------------------------------------*
+* STPO
+*--------------------------------------------------------------------*
+  LOOP AT it_stpo_api02 INTO wa_stpo_api02.
+    SELECT SINGLE maktx INTO wa_stpo_api02-item_text1 FROM makt
+      WHERE spras = sy-langu
+        AND matnr = wa_stpo_api02-component.
+    MODIFY it_stpo_api02 FROM wa_stpo_api02 INDEX sy-tabix.
+  ENDLOOP.
+  SORT it_stpo_api02 BY item_text1.
+  CLEAR v_item_no.
+  REFRESH it_stpo_api01.
+  LOOP AT it_stpo_api02 INTO wa_stpo_api02.
+    CLEAR wa_stpo_api01.
+    v_item_no = v_item_no + 10.
+    UNPACK v_item_no TO v_item_no.
+    wa_stpo_api01-item_categ = wa_stpo_api02-item_categ.
+    wa_stpo_api01-item_no    = v_item_no.
+    wa_stpo_api01-component  = wa_stpo_api02-component.
+    wa_stpo_api01-comp_qty   = wa_stpo_api02-comp_qty.
+    wa_stpo_api01-comp_unit  = wa_stpo_api02-comp_unit.
+    wa_stpo_api01-rel_cost   = wa_stpo_api02-rel_cost.
+    wa_stpo_api01-rel_prod   = wa_stpo_api02-rel_prod.
+    APPEND wa_stpo_api01 TO it_stpo_api01.
+  ENDLOOP.
+
+  PERFORM calo_init_api.
+  PERFORM convert_date_to_external USING    sy-datum
+                                   CHANGING bom_datuv.
+  PERFORM csap_mat_bom_create TABLES   it_stpo_api01
+                              USING    mat2-matnr
+                                       mat2-werks
+                                       mat2-stlan
+                                       bom_datuv
+                                       wa_stko_api01
+                              CHANGING fl_warning
+                                       bom_no.
+  c_subrc = sy-subrc.
+  IF c_subrc <> 0.
+    PERFORM calo_log_read_messages TABLES it_message.
+    REFRESH it_mtab.
+    LOOP AT it_message INTO wa_message.
+      CLEAR wa_mtab.
+      wa_mtab-msgid = wa_message-msg_id.
+      wa_mtab-msgty = wa_message-msg_type.
+      wa_mtab-msgno = wa_message-msg_no.
+      wa_mtab-msgv1 = wa_message-msg_v1.
+      wa_mtab-msgv2 = wa_message-msg_v2.
+      wa_mtab-msgv3 = wa_message-msg_v3.
+      wa_mtab-msgv4 = wa_message-msg_v4.
+      APPEND wa_mtab TO it_mtab.
+    ENDLOOP.
+    PERFORM c14z_messages_show_as_popup TABLES it_mtab.
+  ELSE.
+    CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'
+      EXPORTING
+        wait = 'X'.
+
+    CLEAR: c_bom.
+    c_bom-matnr = mat2-matnr.
+    CLEAR msg_ok.
+    CONCATENATE 'PT' mat2-matnr 'con lista de material' bom_no 'creada.' INTO msg_ok SEPARATED BY space.
+    MESSAGE msg_ok TYPE 'S'.
+  ENDIF.
+
+ENDFORM.
+
+FORM mm01_pt TABLES   pit_tline         STRUCTURE tline
+             USING    VALUE(i_material) TYPE ty_creatematerial
+             CHANGING VALUE(c_return)   TYPE bapiret2
+                      VALUE(c_matnr)    TYPE matnr.
+*BAPI_MATERIAL_SAVEDATA
+  DATA: wa_headdata             TYPE bapimathead,
+        wa_clientdata           TYPE bapi_mara,   "(ok)
+        wa_clientdatax          TYPE bapi_marax,  "(ok)
+        wa_plantdata            TYPE bapi_marc,   "(ok)
+        wa_plantdatax           TYPE bapi_marcx,  "(ok)
+        wa_valuationdata        TYPE bapi_mbew,   "(ok)
+        wa_valuationdatax       TYPE bapi_mbewx,  "(ok)
+*        wa_forecastparameters   TYPE bapi_forecastparameters,
+*        wa_forecastparametersx  TYPE bapi_forecastparametersx,
+        wa_storagelocationdata  TYPE bapi_mard,
+        wa_storagelocationdatax TYPE bapi_mardx,
+        wa_warehousenumberdata  TYPE bapi_mlgn,   "(ok)
+        wa_warehousenumberdatax TYPE bapi_mlgnx,  "(ok)
+        wa_salesdata            TYPE bapi_mvke,   "(ok)
+        wa_salesdatax           TYPE bapi_mvkex,  "(ok)
+*        wa_storagetypedata      TYPE bapi_mlgt,
+*        wa_storagetypedatax     TYPE bapi_mlgtx,
+        wa_bapi_makt            TYPE bapi_makt,
+        it_bapi_makt            TYPE TABLE OF bapi_makt,
+        it_bapi_marm            TYPE TABLE OF bapi_marm,
+        it_bapi_marmx           TYPE TABLE OF bapi_marmx,
+        it_bapi_mltx            TYPE TABLE OF bapi_mltx,
+        it_bapi_mlan            TYPE TABLE OF bapi_mlan.
+
+  DATA: wa_bapi1003_key    TYPE bapi1003_key,
+        it_allocvaluesnum  TYPE TABLE OF bapi1003_alloc_values_num,
+        it_allocvalueschar TYPE TABLE OF bapi1003_alloc_values_char,
+        it_allocvaluescurr TYPE TABLE OF bapi1003_alloc_values_curr.
+
+  DATA: wa_mara                TYPE mara,
+        it_bapi_returnmessages TYPE TABLE OF bapi_matreturn2,
+        v_maktx                TYPE makt-maktx.
+
+  CLEAR: c_matnr, v_maktx.
+*--------------------------------------------------------------------*
+  CLEAR wa_headdata.
+  wa_headdata-material        = i_material-matnr.
+  wa_headdata-ind_sector      = 'I'.    "{I: Creaciones Iguazu, F: Perfumes y esencias}
+  wa_headdata-matl_type       = 'ZFER'. "ZDE2'
+  wa_headdata-basic_view      = 'X'.    "ok being02 - wa_clientdata
+  wa_headdata-sales_view      = 'X'.    "wa_salesdata
+
+  wa_headdata-purchase_view   = 'X'.   "(marc) wa_plantdatax-auto_p_ord
+
+  wa_headdata-mrp_view        = 'X'.    "(marc)
+  wa_headdata-forecast_view   = 'X'.
+  wa_headdata-work_sched_view = 'X'.    "(marc)
+  wa_headdata-prt_view        = 'X'.
+  wa_headdata-storage_view    = 'X'.    "
+  wa_headdata-warehouse_view  = 'X'.    "
+  wa_headdata-quality_view    = 'X'.
+  wa_headdata-account_view    = 'X'.    "ok being02 - wa_valuationdata
+  wa_headdata-cost_view       = 'X'.    "ok
+*--------------------------------------------------------------------*
+* Model Data
+*--------------------------------------------------------------------*
+  PERFORM mara_to_clientdata USING    const_modelopt01  "'MODELO_PT'
+                             CHANGING wa_clientdata
+                                      wa_clientdatax.
+  IF sy-subrc = 0.
+    wa_clientdata-matl_group = i_material-matkl.
+    wa_clientdata-old_mat_no = i_material-bismt.
+    wa_clientdata-size_dim   = i_material-groes.
+    wa_clientdata-prod_hier  = wa_clientdata-matl_group.
+    wa_clientdata-STD_DESCR  = I_MATERIAL-NORMT.    " RVEGA agregar numero de proyecto
+    CLEAR wa_mara.
+    SELECT SINGLE * INTO wa_mara FROM mara WHERE matnr = i_material-ref_matnr.
+    IF sy-subrc = 0.
+      wa_clientdata-extmatlgrp = wa_mara-extwg.  "Cve. olor
+    ENDIF.        "<< datos del desarrollo
+*--------------------------------------------------------------------*
+    PERFORM marc_to_plantdata USING    const_modelopt01
+                              CHANGING wa_plantdata
+                                       wa_plantdatax.
+*--------------------------------------------------------------------*
+    PERFORM mard_to_storagelocationdata USING    const_modelopt01
+                                        CHANGING wa_storagelocationdata
+                                                 wa_storagelocationdatax.
+*--------------------------------------------------------------------*
+    PERFORM marm_to_bapi_marm TABLES it_bapi_marm
+                                     it_bapi_marmx
+                              USING  const_modelopt01.
+*--------------------------------------------------------------------*
+    PERFORM mbew_to_valuationdata USING    const_modelopt01
+                                  CHANGING wa_valuationdata
+                                           wa_valuationdatax.
+*--------------------------------------------------------------------*
+    PERFORM mlan_to_bapi_mlan TABLES it_bapi_mlan
+                              USING  const_modelopt01.
+*--------------------------------------------------------------------*
+    PERFORM mlgn_to_warehousenumberdata USING    const_modelopt01
+                                        CHANGING wa_warehousenumberdata
+                                                 wa_warehousenumberdatax.
+*--------------------------------------------------------------------*
+    PERFORM mvke_to_salesdata USING    const_modelopt01
+                              CHANGING wa_salesdata
+                                       wa_salesdatax.
+    wa_salesdata-prod_hier  = wa_clientdata-prod_hier.
+    wa_salesdatax-prod_hier = 'X'.
+*--------------------------------------------------------------------*
+    CONCATENATE i_material-maktx i_material-matnr INTO v_maktx SEPARATED BY space.
+    PERFORM makt_to_bapi_makt TABLES it_bapi_makt
+                              USING  v_maktx. "i_material-maktx.
+*--------------------------------------------------------------------*
+    PERFORM mltx_to_bapi_mltx TABLES pit_tline
+                                     it_bapi_mltx
+                              USING  i_material-matnr.
+*--------------------------------------------------------------------*
+    PERFORM material_savedata TABLES   it_bapi_makt
+                                       it_bapi_marm
+                                       it_bapi_marmx
+                                       it_bapi_mltx
+                                       it_bapi_mlan
+                                       it_bapi_returnmessages
+                              USING    wa_headdata
+                                       wa_clientdata
+                                       wa_clientdatax
+                                       wa_plantdata
+                                       wa_plantdatax
+                                       wa_storagelocationdata
+                                       wa_storagelocationdatax
+                                       wa_valuationdata
+                                       wa_valuationdatax
+                                       wa_warehousenumberdata
+                                       wa_warehousenumberdatax
+                                       wa_salesdata
+                                       wa_salesdatax
+                              CHANGING wa_return_matdes
+                                       new_matnr.
+    IF wa_return_matdes-type = 'S'.
+      c_matnr = new_matnr.
+      CLEAR wa_bapi1003_key.
+      wa_bapi1003_key-object      = const_modelopt01.
+      wa_bapi1003_key-objecttable = 'MARA'.
+      wa_bapi1003_key-classnum    = 'MAT_IGUAZÚ'.
+      wa_bapi1003_key-classtype   = '001'.
+      wa_bapi1003_key-keydate     = sy-datum.
+      wa_bapi1003_key-flag        = space.
+
+      PERFORM objcl_getdetail TABLES it_allocvaluesnum
+                                     it_allocvalueschar
+                                     it_allocvaluescurr
+                                     it_bapi_returnmessages
+                              USING  wa_bapi1003_key.
+      READ TABLE it_bapi_returnmessages INTO wa_return_matdes INDEX 1.
+      IF wa_return_matdes-type = 'S'.
+        CALL FUNCTION 'CONVERSION_EXIT_MATN1_INPUT'
+          EXPORTING
+            input        = new_matnr
+          IMPORTING
+            output       = wa_bapi1003_key-object
+          EXCEPTIONS
+            length_error = 1
+            OTHERS       = 2.
+
+        "wa_bapi1003_key-objecttable  = 'MARA'.
+        "wa_bapi1003_key-classnum     = ''.
+        "wa_bapi1003_key-classtype    = ''.
+        wa_bapi1003_key-status       = '1'.
+        "wa_bapi1003_key-stdclass     = ''.
+        "wa_bapi1003_key-changenumber = ''.
+        "wa_bapi1003_key-keydate      = sy-datum.
+        wa_bapi1003_key-flag         = space.
+
+        PERFORM objcl_create TABLES it_allocvaluesnum
+                                    it_allocvalueschar
+                                    it_allocvaluescurr
+                                    it_bapi_returnmessages
+                             USING  wa_bapi1003_key.
+        READ TABLE it_bapi_returnmessages INTO wa_return_matdes INDEX 1.
+
+      ENDIF.        "<< clasification ( type 'S' )?
+*--------------------------------------------------------------------*
+      IF i_material-copy_bom = 'X'.
+        CLEAR matbom.
+        matbom-matnr = i_material-ref_matnr.
+        PERFORM material_dat01 CHANGING matbom.
+        IF matbom-stlnr IS NOT INITIAL.
+          "CLEAR matbom.
+          PERFORM copy_bom USING    i_material-ref_matnr
+                                    new_matnr
+                           CHANGING matbom
+                                    v_subrc.
+          IF v_subrc = 0.
+            CLEAR mat2.
+            mat1-matnr = matbom-matnr.
+            focus_bom  = '1'.
+            PERFORM prices_recording_process USING    mat1
+                                                      mat2
+                                                      mat3
+                                             CHANGING v_subrc
+                                                      matbom.
+          ENDIF.
+        ELSE.
+          MESSAGE 'Desarrollo sin Lista de material' TYPE 'S' DISPLAY LIKE 'E'.
+        ENDIF.
+      ENDIF.        "<< copy_bom
+*--------------------------------------------------------------------*
+    ELSE.
+      MESSAGE wa_return_matdes-message TYPE 'I'.
+*      MESSAGE wa_return_matdes-message TYPE 'S' DISPLAY LIKE 'E'.
+    ENDIF.        "<< material_savedata ( type = 'S' )?
+  ENDIF.        "<< mara?
+ENDFORM.
+
+
+
+
+*
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701

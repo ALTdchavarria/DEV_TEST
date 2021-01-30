@@ -1,0 +1,206 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPP_INC_BOM_ACTAUT_01
+*& Bom Activity Authorization
+*& Creó: Ing. Orlando Arturo Bustamante Gómez
+*& Fecha: 05FEB18
+*&---------------------------------------------------------------------*
+
+DATA: const_objaut   TYPE xuobject VALUE 'ZPP_LSTMAT',
+
+      const_actvt_01 TYPE activ_auth VALUE '01', "Añadir o generar
+      const_actvt_02 TYPE activ_auth VALUE '02', "Modificar
+      const_actvt_03 TYPE activ_auth VALUE '03', "Visualizar
+      const_actvt_04 TYPE activ_auth VALUE '04', "Imp., tratar msj.
+      const_actvt_09 TYPE activ_auth VALUE '09', "Visualizar precios
+      const_actvt_43 TYPE activ_auth VALUE '43', "Liberar
+      const_actvt_80 TYPE activ_auth VALUE '80', "Imprimir
+      const_actvt_z1 TYPE activ_auth VALUE 'Z1'. "Costos
+
+DATA tran_usrsop TYPE RANGE OF xubname.
+*--------------------------------------------------------------------*
+*
+*--------------------------------------------------------------------*
+FORM init_usrsop TABLES ptran_usrsop LIKE tran_usrsop.
+  DATA lran_usrsop LIKE LINE OF tran_usrsop.
+
+  REFRESH ptran_usrsop.
+
+  CLEAR lran_usrsop.
+  lran_usrsop-sign   = 'I'.
+  lran_usrsop-option = 'EQ'.
+  lran_usrsop-low    = 'RVPEREZ'.
+  APPEND lran_usrsop TO ptran_usrsop.
+
+  CLEAR lran_usrsop.
+  lran_usrsop-sign   = 'I'.
+  lran_usrsop-option = 'EQ'.
+  lran_usrsop-low    = 'TSANCHEZ'.
+  APPEND lran_usrsop TO ptran_usrsop.
+ENDFORM.
+
+FORM user_autho TABLES   pit_zpp001      STRUCTURE zuzpp001
+                         pit_uaml        STRUCTURE zpp_uaml
+                CHANGING VALUE(c_gpoaut) TYPE zugpo_aut.
+  CLEAR c_gpoaut.
+  SELECT SINGLE * INTO c_gpoaut FROM zugpo_aut
+    WHERE bname = sy-uname.
+  IF sy-subrc = 0.
+    REFRESH pit_zpp001.
+    SELECT * INTO TABLE pit_zpp001 FROM zuzpp001
+      WHERE bname = sy-uname
+      ORDER BY bname stlbe.
+
+    REFRESH pit_uaml.
+    SELECT * INTO TABLE pit_uaml FROM zpp_uaml
+      WHERE bname = sy-uname
+        AND begda <= sy-datum
+        AND endda >= sy-datum
+      ORDER BY matnr.
+  ENDIF.
+ENDFORM.
+
+FORM chkaut USING    VALUE(i_author) TYPE stzu-stlbe
+                     VALUE(i_actvt)  TYPE activ_auth
+            CHANGING VALUE(c_subrc)  TYPE sysubrc.
+  CLEAR c_subrc.
+  AUTHORITY-CHECK OBJECT const_objaut "'ZPP_LSTMAT'
+    ID 'ACTVT' FIELD i_actvt
+    ID 'BEGRU' FIELD i_author.
+
+  c_subrc = sy-subrc.
+ENDFORM.
+
+*FORM material_auth TABLES   pit_zpp001      STRUCTURE zuzpp001
+*                            pit_uaml        STRUCTURE zpp_uaml
+*                   USING    VALUE(i_gpoaut) TYPE zugpo_aut
+*                            VALUE(i_matnr)  TYPE mara-matnr "Material
+*                            VALUE(i_stlnr)  TYPE mast-stlnr "Enlace lst. mat
+*                            VALUE(i_stlbe)  TYPE stzu-stlbe "Gpo. aut.
+*                   CHANGING VALUE(c_err)    TYPE c.
+*  DATA: wrkare_zpp001 TYPE zuzpp001,
+*        wrkare_uaml   TYPE zpp_uaml,
+*        aut_subrc     TYPE sysubrc.
+*
+*  CLEAR c_err.
+*  IF NOT i_stlnr IS INITIAL.
+*    IF sy-uname IN tran_usrsop. "= 'VVELAZQUEZ' OR sy-uname = 'TSANCHEZ'.
+*      c_err = '0'.
+*    ELSE.
+*      IF i_gpoaut-stlbe = i_stlbe.
+*        c_err = '0'.
+*      ELSE.
+*        READ TABLE pit_zpp001 INTO wrkare_zpp001 WITH KEY bname = sy-uname
+*                                                          stlbe = i_stlbe BINARY SEARCH.
+*        IF sy-subrc = 0.
+*          IF i_matnr = wrkare_zpp001-matnr1 OR
+*             i_matnr = wrkare_zpp001-matnr2 OR
+*             i_matnr = wrkare_zpp001-matnr3 OR
+*             i_matnr = wrkare_zpp001-matnr4 OR
+*             i_matnr = wrkare_zpp001-matnr5.
+*            c_err = '0'.
+*          ELSE.
+*            PERFORM chkaut USING    i_stlbe
+*                                    const_actvt_03
+*                           CHANGING aut_subrc.
+*            IF aut_subrc = 0.
+*              c_err = '0'.
+*            ELSE.
+*              c_err = '4'.        "<< Sin autorización ZUZPP001
+*            ENDIF.        "<< acceso al gpo. de aut. vía pfcg?
+*          ENDIF.        "<< está entre los 5 materiales?
+*        ELSE.
+*          IF NOT pit_uaml[] IS INITIAL.
+*            READ TABLE pit_uaml INTO wrkare_uaml WITH KEY matnr = i_matnr BINARY SEARCH.
+*            IF sy-subrc = 0.
+*              c_err = '0'.
+*            ELSE.
+*              PERFORM chkaut USING    i_stlbe
+*                                      const_actvt_03
+*                             CHANGING aut_subrc.
+*              IF aut_subrc = 0.
+*                c_err = '0'.
+*              ELSE.
+*                c_err = '3'.        "<< Sin autorización UAML
+*              ENDIF.
+*            ENDIF.        "<< acceso uaml?
+*          ELSE.
+*            PERFORM chkaut USING    i_stlbe
+*                                    const_actvt_03
+*                           CHANGING aut_subrc.
+*            IF aut_subrc = 0.
+*              c_err = '0'.
+*            ELSE.
+*              c_err = '2'.        "<< Sin autorización zuzpp001 y uaml
+*            ENDIF.
+*          ENDIF.        "<< acceso al gpo. de aut. vía pfcg?
+*        ENDIF.        "<< existe en z200
+*      ENDIF.        "<< autor de la lista?
+*    ENDIF.        "<< soporte?
+*  ELSE.
+*    IF NOT i_gpoaut IS INITIAL OR ( sy-uname IN tran_usrsop ). "= 'VVELAZQUEZ' OR sy-uname = 'TSANCHEZ' ).
+*      c_err = '0'.
+*    ELSE.
+*      PERFORM chkaut USING    i_gpoaut-stlbe
+*                              const_actvt_01
+*                     CHANGING aut_subrc.
+*      IF aut_subrc = 0.
+*        c_err = '0'.
+*      ELSE.
+*        c_err = '1'.        "<< No tiene acceso a crear fórmulas
+*      ENDIF.        "<< pfcg?
+*    ENDIF.        "<< perfumista o soporte
+*  ENDIF.        "<< stlnr?
+*ENDFORM.
+
+FORM material_auth TABLES   pit_zpp001      STRUCTURE zuzpp001
+                            pit_uaml        STRUCTURE zpp_uaml
+                   USING    VALUE(i_gpoaut) TYPE zugpo_aut
+                            VALUE(i_matnr)  TYPE mara-matnr "Material
+                            VALUE(i_stlnr)  TYPE mast-stlnr "Enlace lst. mat
+                            VALUE(i_stlbe)  TYPE stzu-stlbe "Gpo. aut.
+                   CHANGING VALUE(c_err)    TYPE c.
+  DATA: wrkare_zpp001 TYPE zuzpp001,
+        wrkare_uaml   TYPE zpp_uaml,
+        aut_subrc     TYPE sysubrc.
+
+  CLEAR c_err.
+  IF sy-uname IN tran_usrsop.
+    c_err = '0'.        "<< VIE
+  ELSE.
+    IF NOT i_gpoaut IS INITIAL. "Existe en Gpo. Aut?
+      IF NOT i_stlnr IS INITIAL.  "Existe LM?
+        IF i_gpoaut-stlbe = i_stlbe.
+          c_err = '0'.  "Autor de la fórmula
+        ELSE. "No es autor de la fórmula
+          SELECT SINGLE * INTO wrkare_uaml FROM zpp_uaml
+            WHERE bname = sy-uname
+              AND matnr =  i_matnr
+              AND begda <= sy-datum
+              AND endda >= sy-datum.
+          IF sy-subrc = 0.  "Existe en UAML?
+            c_err = '0'.
+          ELSE.
+            PERFORM chkaut USING    i_stlbe
+                                    const_actvt_03
+                           CHANGING aut_subrc.
+            IF aut_subrc = 0. "stble en el Rol?
+              c_err = '0'.
+            ELSE.
+              c_err = '2'.
+            ENDIF.        "<< authority check?
+          ENDIF.        "<< existe en UAML?
+        ENDIF.        "<< author = stlbe?
+      ELSE.
+        c_err = '0'.  "Sin LM -> Nuevo
+      ENDIF.        "<< stlnr?
+    ELSE.
+      c_err = '1'.  "No existe en Gpo. Aut. (debe estar en la Z100)
+    ENDIF.        "<< z100?
+  ENDIF.        "<< support
+
+ENDFORM.
+
+*
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701

@@ -1,0 +1,582 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPP_INC_BEING01_F0100
+*&---------------------------------------------------------------------*
+*--------------------------------------------------------------------*
+FORM create_image CHANGING VALUE(c_gui_container) TYPE REF TO cl_gui_custom_container
+                           VALUE(c_gui_picture)   TYPE REF TO cl_gui_picture
+                           VALUE(c_gui_cndp_url)  TYPE cndp_url.
+  CLEAR: c_gui_container, c_gui_picture, c_gui_cndp_url.
+
+  CREATE OBJECT c_gui_container
+    EXPORTING
+      container_name = 'CC_IMG'.
+  CREATE OBJECT c_gui_picture
+    EXPORTING
+      parent = c_gui_container.
+  CALL METHOD c_gui_picture->set_display_mode
+    EXPORTING
+      display_mode = cl_gui_picture=>display_mode_normal_center.
+  CALL METHOD c_gui_picture->set_3d_border
+    EXPORTING
+      border = 0.
+  CALL FUNCTION 'DP_PUBLISH_WWW_URL'
+    EXPORTING
+      objid    = 'ZCREACIONES_IGUAZU'
+      lifetime = cndp_lifetime_transaction
+    IMPORTING
+      url      = c_gui_cndp_url
+    EXCEPTIONS
+      OTHERS   = 1.
+  IF sy-subrc EQ 0.
+    CALL METHOD c_gui_picture->load_picture_from_url_async
+      EXPORTING
+        url = c_gui_cndp_url.
+  ENDIF.
+ENDFORM.                    " CREATE_IMAGE
+
+FORM tx_100_btns_init_create.
+  DATA wa_excluding TYPE sy-ucomm.
+
+  PERFORM chkaut USING    wa_gpoaut-stlbe
+                          const_actvt_43
+                 CHANGING subrc_aut.
+  IF subrc_aut <> 0.
+    CLEAR wa_excluding.
+    wa_excluding = 'NEWPT'.
+    COLLECT wa_excluding INTO it_funcod_excluding.
+  ENDIF.
+ENDFORM.
+
+FORM material_dat01 CHANGING VALUE(c_bom) LIKE zstr_mat.
+  DATA: wa_mara TYPE mara,
+        wa_mast TYPE mast.
+
+  CLEAR: wa_mara, c_bom-chked.
+  SELECT SINGLE * INTO wa_mara FROM mara
+    WHERE matnr = c_bom-matnr.
+
+  IF sy-subrc = 0.
+    IF wa_mara-lvorm = 'X'.
+      CLEAR c_bom.
+      MESSAGE 'Material con marca de borrado' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ELSEIF wa_mara-mstae = '02' OR wa_mara-mstae = '03' OR
+           wa_mara-mstae = '04' OR wa_mara-mstae = 'ZI'.
+      CLEAR c_bom.
+      MESSAGE 'Material bloqueado' TYPE 'S' DISPLAY LIKE 'E'.
+      RETURN.
+    ELSE.
+      SELECT SINGLE bwkey INTO c_bom-werks FROM mbew
+        WHERE lvorm <> 'X'
+          AND matnr =  c_bom-matnr.
+      IF sy-subrc = 0.
+        IF c_bom-werks <> const_werks.
+          CLEAR c_bom.
+          MESSAGE 'No Existe el Material en el centro IGUA' TYPE 'S' DISPLAY LIKE 'E'.
+          RETURN.
+        ELSE.
+          c_bom-mtart = wa_mara-mtart.
+          IF NOT wa_mara-formt IS INITIAL.
+            c_bom-locke = 'X'.
+          ENDIF.
+*Txt. material
+          SELECT SINGLE maktx INTO c_bom-maktx FROM makt
+            WHERE spras = sy-langu
+              AND matnr = c_bom-matnr.
+*Enlace mat - lst.mat.
+          SELECT SINGLE * INTO wa_mast FROM mast
+            WHERE werks = const_werks
+              AND stlan = '1'
+              AND matnr = c_bom-matnr.
+          IF sy-subrc = 0.
+            MOVE-CORRESPONDING wa_mast TO c_bom.
+*Gpo. aut.
+            SELECT SINGLE stlbe INTO c_bom-stlbe FROM stzu
+              WHERE stlty = 'M'
+                AND stlnr = c_bom-stlnr.
+
+            SELECT SINGLE stktx INTO c_bom-annam FROM stko
+              WHERE stlty = 'M'
+                AND stlnr = c_bom-stlnr
+                AND stlal = c_bom-stlal.
+          ELSE.
+            CLEAR: c_bom-stlan, c_bom-stlnr, c_bom-stlal, c_bom-stlbe.
+          ENDIF.        "<< mast?
+          c_bom-chked = 'X'.
+        ENDIF.        "<< werks?
+      ELSE.
+        CLEAR c_bom.
+        MESSAGE 'Material sin Valoración de mat. o con marca de borrado' TYPE 'S' DISPLAY LIKE 'E'.
+        RETURN.
+      ENDIF.        "<< mbew?
+    ENDIF.        "<< lvorm?
+  ELSE.
+    CLEAR c_bom.
+    MESSAGE 'Material no existe' TYPE 'S' DISPLAY LIKE 'E'.
+    RETURN.
+  ENDIF.        "<< mara?
+ENDFORM.
+
+FORM fcat_last_materials TABLES pit_fcat TYPE slis_t_fieldcat_alv.
+  DATA wa_fcat TYPE slis_fieldcat_alv.
+  REFRESH pit_fcat.
+
+  CLEAR wa_fcat.
+  wa_fcat-fieldname = 'MATNR'.
+  wa_fcat-seltext_m = 'Material'.
+  wa_fcat-outputlen = 18.
+  wa_fcat-key       = 'X'.
+  wa_fcat-key_sel   = 'X'.
+  wa_fcat-hotspot   = 'X'.
+  APPEND wa_fcat TO pit_fcat.
+
+  CLEAR wa_fcat.
+  wa_fcat-fieldname = 'MAKTX'.
+  wa_fcat-seltext_m = 'Descripción'.
+  wa_fcat-outputlen = 40.
+  APPEND wa_fcat TO pit_fcat.
+
+  CLEAR wa_fcat.
+  wa_fcat-fieldname = 'ERSDA'.
+  wa_fcat-seltext_m = 'Fecha'.
+  wa_fcat-outputlen = 10.
+  APPEND wa_fcat TO pit_fcat.
+
+  CLEAR wa_fcat.
+  wa_fcat-fieldname = 'MATKL'.
+  wa_fcat-seltext_m = 'Gpo. de art.'.
+  wa_fcat-outputlen = 9.
+  APPEND wa_fcat TO pit_fcat.
+ENDFORM.
+
+FORM last_mm03.
+  DATA: BEGIN OF zstr_lstmat,
+          matnr LIKE mara-matnr,
+          maktx LIKE makt-maktx,
+          ersda LIKE mara-ersda,
+          matkl LIKE mara-matkl,
+        END OF zstr_lstmat.
+
+  DATA: it_cat_lstmat LIKE TABLE OF zstr_lstmat.
+
+  DATA: it_fcat_mara TYPE slis_t_fieldcat_alv,
+        v_selfield   TYPE slis_selfield,
+        v_exit       TYPE c.
+
+  REFRESH it_cat_lstmat.
+  SELECT a~matnr b~maktx a~ersda a~matkl UP TO 30 ROWS INTO CORRESPONDING FIELDS OF TABLE it_cat_lstmat
+    FROM mara AS a
+    INNER JOIN makt AS b
+      ON b~matnr = a~matnr
+    WHERE a~lvorm <> 'X'
+      AND b~spras =  sy-langu
+      AND a~ernam =  sy-uname
+    ORDER BY a~ersda DESCENDING. "a~matnr.
+  IF sy-subrc = 0.
+*Inicializar fcat
+    PERFORM fcat_last_materials TABLES it_fcat_mara.
+*Mostrar lista
+    PERFORM popup_alv TABLES   it_cat_lstmat
+                      USING    it_fcat_mara
+                               'Últimos materiales creados'
+                      CHANGING v_selfield
+                               v_exit.
+    IF v_exit <> 'X'.
+*Obtener respuesta
+      IF v_selfield-fieldname <> 'MATNR'.
+        MESSAGE 'Seleccione número de material!' TYPE 'I'.
+      ELSE.
+        mat1-matnr = v_selfield-value.
+*        CLEAR cursor_fld.
+        CLEAR ok_code.
+      ENDIF.
+    ENDIF.        "<< popup alv
+    REFRESH: it_cat_lstmat, it_fcat_mara.
+  ENDIF.        "<< last materials
+ENDFORM.
+
+FORM get_stas TABLES pit_stas     STRUCTURE stas
+              USING  VALUE(c_bom) LIKE zstr_mat.
+  SELECT * APPENDING TABLE pit_stas FROM stas
+    WHERE stlty = 'M' "c_bom-stlty
+      AND stlnr = c_bom-stlnr
+      AND stlal = c_bom-stlal.
+ENDFORM.
+
+FORM exe_0100.
+  REFRESH it_pos.
+*Datos BOM
+  REFRESH it_stas.
+  IF NOT mat1-stlnr IS INITIAL.
+    PERFORM get_stas TABLES it_stas
+                     USING  mat1.
+    "Desbloquear cant.1
+    "Bloquear cant.2 y cant.3
+  ENDIF.
+  IF NOT mat2-stlnr IS INITIAL.
+    PERFORM get_stas TABLES it_stas
+                     USING  mat2.
+    "Desbloquear cant.2
+    "Bloquear cant.1 y cant.3
+  ENDIF.
+
+  IF NOT mat3-stlnr IS INITIAL.
+    PERFORM get_stas TABLES it_stas
+                     USING  mat3.
+    "Desbloquear cant.3
+    "Bloquear cant.1 y cant.2
+  ENDIF.
+  IF NOT it_stas[] IS INITIAL.
+    SELECT * INTO TABLE it_stpo FROM stpo FOR ALL ENTRIES IN it_stas
+      WHERE stlty = it_stas-stlty
+        AND stlnr = it_stas-stlnr
+        AND stlkn = it_stas-stlkn.
+
+    IF sy-subrc = 0.
+      SORT it_stpo BY stlnr stlkn stpoz.
+      CLEAR zstr_tot.
+      LOOP AT it_stas INTO wa_stas.
+        CLEAR wa_pos.
+        READ TABLE it_stpo INTO wa_stpo WITH KEY stlnr = wa_stas-stlnr
+                                                 stlkn = wa_stas-stlkn BINARY SEARCH.
+        IF sy-subrc = 0.
+          MOVE-CORRESPONDING wa_stpo TO wa_pos.
+          wa_pos-lstmat = '1'.
+*Txt. material
+          SELECT SINGLE maktx INTO wa_pos-maktx FROM makt
+            WHERE spras = sy-langu
+              AND matnr = wa_pos-idnrk.
+*Clave de olor
+          SELECT SINGLE extwg INTO wa_pos-extwg FROM mara
+            WHERE matnr = wa_pos-idnrk.
+          IF sy-subrc = 0.
+            CONDENSE wa_pos-extwg NO-GAPS.
+          ENDIF.
+*Precio
+          PERFORM co_material_matprim TABLES   it_ifra_stpo
+                                               it_ifra_mp
+                                               it_ifra_fam
+                                               it_ifra_nlis
+                                               it_ifra_proh
+                                      USING    wa_pos-idnrk
+                                               const_werks
+                                               const_menge
+                                               ''
+                                      CHANGING ifra_verpr
+                                               ifra_precio.
+          wa_pos-verpr  = ifra_precio.
+          wa_pos-waers  = 'MXP'.
+          wa_pos-meins  = wa_stpo-meins.
+
+          IF mat1-stlnr = wa_stpo-stlnr.
+            wa_pos-lstmat = '1'.
+            wa_pos-menge1 = wa_stpo-menge.
+            wa_pos-verpr1 = wa_pos-verpr * wa_pos-menge1 / const_menge.
+          ENDIF.
+          IF mat2-stlnr = wa_stpo-stlnr.
+            wa_pos-lstmat = '2'.
+            wa_pos-menge2 = wa_stpo-menge.
+            wa_pos-verpr2 = wa_pos-verpr * wa_pos-menge2 / const_menge.
+          ENDIF.
+          IF mat3-stlnr = wa_stpo-stlnr.
+            wa_pos-lstmat = '3'.
+            wa_pos-menge3 = wa_stpo-menge.
+            wa_pos-verpr3 = wa_pos-verpr * wa_pos-menge3 / const_menge.
+          ENDIF.
+*          IF wa_pos-icon01 IS INITIAL.
+            zstr_tot-menge1 = zstr_tot-menge1 + wa_pos-menge1.
+            zstr_tot-verpr1 = zstr_tot-verpr1 + wa_pos-verpr1.
+            zstr_tot-menge2 = zstr_tot-menge2 + wa_pos-menge2.
+            zstr_tot-verpr2 = zstr_tot-verpr2 + wa_pos-verpr2.
+            zstr_tot-menge3 = zstr_tot-menge3 + wa_pos-menge3.
+            zstr_tot-verpr3 = zstr_tot-verpr3 + wa_pos-verpr3.
+*          ENDIF.
+        ENDIF.        "<< stpo? {stlnr}
+        APPEND wa_pos TO it_pos.
+      ENDLOOP.
+    ENDIF.        "<< it_stpo[]?
+  ENDIF.        "<< it_stas[]?
+
+  CASE focus_bom.
+    WHEN '1'.
+      IF zstr_tot-menge1 <> 0.
+        zstr_tot-verpr = zstr_tot-verpr1 * const_menge / zstr_tot-menge1.
+      ENDIF.
+    WHEN '2'.
+      IF zstr_tot-menge2 <> 0.
+        zstr_tot-verpr = zstr_tot-verpr2 * const_menge / zstr_tot-menge2.
+      ENDIF.
+    WHEN '3'.
+      IF zstr_tot-menge3 <> 0.
+        zstr_tot-verpr = zstr_tot-verpr3 * const_menge / zstr_tot-menge3.
+      ENDIF.
+  ENDCASE.
+*Indexar
+  CLEAR tc_line_aux.
+  SORT it_pos BY maktx.
+  LOOP AT it_pos INTO wa_pos.
+    tc_line_aux = tc_line_aux + 1.
+    PERFORM critical_material USING    wa_pos-idnrk
+                                       const_werks
+                              CHANGING wa_pos-icon02.
+    wa_pos-index = tc_line_aux * 10.
+    MODIFY it_pos FROM wa_pos INDEX tc_line_aux.
+  ENDLOOP.
+
+  REFRESH: it_stas, it_stpo.
+  tc_pos-current_line = 1.
+  tc_pos-top_line = 1.
+*--------------------------------------------------------------------*
+*
+  IF it_pos[] IS NOT INITIAL.
+*    DATA wa_thead TYPE thead.
+*    CLEAR wa_thead.
+*--------------------------------------------------------------------*
+* Nota interna en Datos básicos
+*--------------------------------------------------------------------*
+*    wa_thead-tdobject   = 'MATERIAL'.
+*    wa_thead-tdname     = mat1-matnr.
+*    wa_thead-tdid       = 'IVER'.
+*    wa_thead-tdspras    = 'E'.
+*    wa_thead-tdlinesize = '120'.
+*
+*    REFRESH it_tline.
+*    CLEAR wa_tline.
+*    wa_tline-tdline = '.'.
+*    APPEND wa_tline TO it_tline.
+*--------------------------------------------------------------------*
+* Texto lista mat.
+*--------------------------------------------------------------------*
+*    wa_thead-tdobject   = 'BOM'.
+*    CONCATENATE sy-mandt 'M' mat1-stlnr INTO wa_thead-tdname.
+*    wa_thead-tdid       = 'MZU'.
+*    wa_thead-tdspras    = 'S'.
+*    wa_thead-tdlinesize = '120'.
+*
+*    SELECT SINGLE ztext INTO wa_tline-tdline FROM stzu
+*      WHERE stlty = 'M'
+*        AND stlnr = mat1-stlnr
+*        AND stlan = mat1-stlan.
+*
+*    APPEND wa_tline TO it_line.
+*
+*    CLEAR wa_tline.
+*    wa_tline-tdline = 'v'.
+**    CONCATENATE cl_abap_char_utilities=>cr_lf wa_tline-tdline INTO wa_tline-tdline.
+*    APPEND wa_tline TO it_tline.
+*--------------------------------------------------------------------*
+*    PERFORM save_text TABLES it_tline
+*                      USING  wa_thead
+*                             ''
+*                             'X'.
+*    IF sy-subrc = 0.
+*      CALL FUNCTION 'BAPI_TRANSACTION_COMMIT'.
+*    ENDIF.
+*--------------------------------------------------------------------*
+*UPD material
+    DATA: wa_headdata             TYPE bapimathead,
+          wa_clientdata           TYPE bapi_mara,
+          wa_clientdatax          TYPE bapi_marax,
+          wa_plantdata            TYPE bapi_marc,
+          wa_plantdatax           TYPE bapi_marcx,
+          wa_storagelocationdata  TYPE bapi_mard,
+          wa_storagelocationdatax TYPE bapi_mardx,
+          wa_valuationdata        TYPE bapi_mbew,
+          wa_valuationdatax       TYPE bapi_mbewx,
+          wa_warehousenumberdata  TYPE bapi_mlgn,   "(ok)
+          wa_warehousenumberdatax TYPE bapi_mlgnx,  "(ok)
+          wa_salesdata            TYPE bapi_mvke,   "(ok)
+          wa_salesdatax           TYPE bapi_mvkex,  "(ok)
+          wa_bapi_makt            TYPE bapi_makt,
+          it_bapi_makt            TYPE TABLE OF bapi_makt,
+          wa_bapi_marm            TYPE bapi_marm,
+          it_bapi_marm            TYPE TABLE OF bapi_marm,
+          wa_bapi_marmx           TYPE bapi_marmx,
+          it_bapi_marmx           TYPE TABLE OF bapi_marmx,
+          wa_bapi_mltx            TYPE bapi_mltx,
+          it_bapi_mltx            TYPE TABLE OF bapi_mltx,
+          wa_bapi_mlan            TYPE bapi_mlan,
+          it_bapi_mlan            TYPE TABLE OF bapi_mlan.
+
+    DATA: it_bapi_returnmessages TYPE TABLE OF bapi_matreturn2,
+          wa_bapiret2            TYPE bapiret2,
+          c_matnr                TYPE matnr.
+
+    CLEAR: wa_headdata, wa_clientdata, wa_clientdatax.
+    REFRESH: it_bapi_makt, it_bapi_marm, it_bapi_marmx,
+             it_bapi_mlan, it_bapi_returnmessages.
+    CLEAR: wa_plantdata, wa_plantdatax, wa_storagelocationdata,
+           wa_storagelocationdatax, wa_valuationdata, wa_valuationdatax,
+           wa_warehousenumberdata, wa_warehousenumberdatax,
+           wa_salesdata, wa_salesdatax.
+
+    wa_headdata-material = mat1-matnr.
+
+    SELECT SINGLE ferth INTO wa_clientdata-prod_memo FROM mara
+      WHERE matnr = mat1-matnr.
+
+    IF wa_clientdata-prod_memo IS NOT INITIAL.
+      CLEAR wa_clientdata-prod_memo.
+    ELSE.
+      wa_clientdata-prod_memo = '.'.
+    ENDIF.
+
+    wa_clientdatax-prod_memo = 'X'.
+
+    PERFORM material_savedata TABLES   it_bapi_makt
+                                       it_bapi_marm
+                                       it_bapi_marmx
+                                       it_bapi_mltx
+                                       it_bapi_mlan
+                                       it_bapi_returnmessages
+                              USING    wa_headdata
+                                       wa_clientdata
+                                       wa_clientdatax
+                                       wa_plantdata
+                                       wa_plantdatax
+                                       wa_storagelocationdata
+                                       wa_storagelocationdatax
+                                       wa_valuationdata
+                                       wa_valuationdatax
+                                       wa_warehousenumberdata
+                                       wa_warehousenumberdatax
+                                       wa_salesdata
+                                       wa_salesdatax
+                              CHANGING wa_bapiret2
+                                       c_matnr.
+
+*--------------------------------------------------------------------*
+  ENDIF.        "<< it_pos[]?
+*--------------------------------------------------------------------*
+*
+*
+
+*--------------------------------------------------------------------*
+  SET SCREEN 300.
+ENDFORM.
+
+FORM co_material_matprim TABLES   pit_stpo        STRUCTURE zest_prifra
+                                  pit_ifra        STRUCTURE zest_prifra_collect_mp
+                                  pit_fam_ifra    STRUCTURE zest_prifra_collect_fam
+                                  pit_nlis        STRUCTURE zest_prifra_collect_mp
+                                  pit_proh        STRUCTURE zest_prifra_collect_mp
+                         USING    VALUE(i_matnr)
+                                  VALUE(i_werks)
+                                  VALUE(i_menge)
+                                  VALUE(i_ifra)
+                         CHANGING VALUE(c_verpr)
+                                  VALUE(c_precio).
+  CLEAR: c_verpr, c_precio.
+  REFRESH: pit_stpo, pit_ifra, pit_fam_ifra, pit_nlis, pit_proh.
+  CALL FUNCTION 'ZCO_MATERIAL_MATPRIM'
+    EXPORTING
+      matnr   = i_matnr
+      werks   = i_werks
+      menge   = i_menge
+      ifra    = i_ifra
+    IMPORTING
+      verpr   = c_verpr
+      precio  = c_precio
+*      topmtnr = ''
+    TABLES
+      stpo    = pit_stpo
+      t_ifra  = pit_ifra
+      f_ifra  = pit_fam_ifra
+      t_nlis  = pit_nlis
+      t_proh  = pit_proh
+    EXCEPTIONS
+      error   = 1
+      OTHERS  = 2.
+ENDFORM.
+*--------------------------------------------------------------------*
+* Util
+*--------------------------------------------------------------------*
+FORM popup_to_confirm USING    VALUE(i_title)
+                               VALUE(i_question)
+                      CHANGING VALUE(c_answer).
+  CLEAR c_answer.
+  CALL FUNCTION 'POPUP_TO_CONFIRM'
+    EXPORTING
+      titlebar      = i_title
+      text_question = i_question
+    IMPORTING
+      answer        = c_answer
+    EXCEPTIONS
+      OTHERS        = 1.
+ENDFORM.
+
+FORM popup_alv TABLES   pit_outtab
+               USING    VALUE(i_tab_fcat) TYPE slis_t_fieldcat_alv
+                        VALUE(i_title)    TYPE sy-title
+               CHANGING VALUE(c_selfield) TYPE slis_selfield
+                        VALUE(c_exit)     TYPE c.
+  CLEAR: c_selfield, c_exit.
+
+  CALL FUNCTION 'REUSE_ALV_POPUP_TO_SELECT'
+    EXPORTING
+      i_title              = i_title
+      i_selection          = 'X'
+      i_zebra              = 'X'
+      i_tabname            = '1'
+      it_fieldcat          =  i_tab_fcat
+
+*      I_LINEMARK_FIELDNAME = 'DISCTYPE'
+*      I_STRUCTURE_NAME     = 'EDISCTYPET'
+*      i_scroll_to_sel_line = 'X'
+*      I_CALLBACK_USER_COMMAND = 'CMD_POPUP_DTYPE'
+    IMPORTING
+      es_selfield          = c_selfield
+      e_exit               = c_exit
+    TABLES
+      t_outtab             = pit_outtab
+    EXCEPTIONS
+      program_error        = 1
+      OTHERS               = 2.
+ENDFORM.
+
+FORM read_text TABLES pit_tline     STRUCTURE tline
+               USING  VALUE(i_head) TYPE thead.
+
+  REFRESH pit_tline.
+  CALL FUNCTION 'READ_TEXT'
+    EXPORTING
+*      client                  = wa_head
+      id                      = i_head-tdid
+      language                = i_head-tdspras
+      name                    = i_head-tdname
+      object                  = i_head-tdobject
+    TABLES
+      lines                   = pit_tline
+    EXCEPTIONS
+      id                      = 1
+      language                = 2
+      name                    = 3
+      not_found               = 4
+      object                  = 5
+      reference_check         = 6
+      wrong_access_to_archive = 7
+      OTHERS                  = 8.
+
+ENDFORM.
+
+FORM save_text TABLES pit_tline         STRUCTURE tline
+               USING  VALUE(i_header)   TYPE thead
+                      VALUE(i_insert)   TYPE c
+                      VALUE(i_savemode) TYPE c.
+  CALL FUNCTION 'SAVE_TEXT'
+    EXPORTING
+      header          = i_header
+      insert          = i_insert
+      savemode_direct = i_savemode
+    TABLES
+      lines           = pit_tline
+    EXCEPTIONS
+      id              = 1
+      language        = 2
+      name            = 3
+      object          = 4
+      OTHERS          = 5.
+ENDFORM.
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701

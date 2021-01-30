@@ -1,0 +1,1034 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPP_INC_BEING01_PAI
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE EXIT_COMMAND_0100 INPUT.
+  IF ok_code = 'BACK'.
+    PERFORM popup_to_confirm USING    'Salida'
+                                      '¿Desea salir de la transacción?'  "text-p01
+                             CHANGING popup_answer.
+    IF popup_answer <> '1'.
+      RETURN.
+    ENDIF.
+  ENDIF.
+  IF ok_code = 'BACK' OR ok_code = 'EXIT'.
+    CLEAR tx_mode.
+    SET SCREEN 0.
+    LEAVE SCREEN.
+  ENDIF.
+ENDMODULE.                 " EXIT_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  GET_CURSOR_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE GET_CURSOR_0100 INPUT.
+  GET CURSOR FIELD cursor_field.
+  CONDENSE cursor_field.
+  GET CURSOR LINE cursor_line.
+ENDMODULE.                 " GET_CURSOR_0100  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  GET_MAT1  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE GET_MAT1 INPUT.
+  IF cursor_field = 'MAT1-MATNR'.
+    IF mat1-matnr IS NOT INITIAL.
+      PERFORM material_dat01 CHANGING mat1.
+
+      PERFORM material_auth TABLES   it_zpp001
+                                     it_uaml
+                            USING    wa_gpoaut
+                                     mat1-matnr
+                                     mat1-stlnr
+                                     mat1-stlbe
+                            CHANGING error_code.
+      IF error_code <> '0'.
+        IF mat1-mtart = 'ZFER' AND mat1-annam = sy-uname.
+          error_code = '0'.
+        ENDIF.        "<< autor del desarrollo?
+      ENDIF.        "<< sin acceso?
+      IF NOT mat1-stlnr IS INITIAL.
+        fld_enabled = 1.
+        val_enabled = 1.
+      ELSE.
+        fld_enabled = 0.
+        val_enabled = 0.
+      ENDIF.        "<< Lst. mat?
+    ELSE.
+      CLEAR: fld_enabled, val_enabled.  "mat1,
+    ENDIF.        "<< mat1-matnr?
+
+    IF error_code <> '0'.
+      CLEAR mat1. "-chked.
+      CASE error_code.
+        WHEN '1'.
+          MESSAGE 'Sin acceso a crear fórmulas (Z100)' TYPE 'S' DISPLAY LIKE 'E'.
+        WHEN '2'.
+          MESSAGE 'Sin acceso al material (UAML)' TYPE 'S' DISPLAY LIKE 'E'.
+        WHEN '3'.
+          MESSAGE 'Sin acceso al material (ZUZPP001)' TYPE 'S' DISPLAY LIKE 'E'.
+        WHEN '4'.
+          MESSAGE 'Sin autorización para visualizar la formula' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDCASE.
+    ENDIF.        "<< error_code?
+  ENDIF.        "<< cursor field
+ENDMODULE.                 " GET_MAT1  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  GET_MAT2  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE GET_MAT2 INPUT.
+  IF cursor_field = 'MAT2-MATNR'.
+    IF mat2-matnr IS NOT INITIAL.
+      PERFORM material_dat01 CHANGING mat2.
+      PERFORM material_auth TABLES   it_zpp001
+                                     it_uaml
+                            USING    wa_gpoaut
+                                     mat2-matnr
+                                     mat2-stlnr
+                                     mat2-stlbe
+                            CHANGING error_code.
+      IF NOT mat2-stlnr IS INITIAL.
+        fld_enabled = 2.
+        val_enabled = 1.
+      ELSE.
+        fld_enabled = 1.
+        val_enabled = 1.
+      ENDIF.
+    ELSE.
+      CLEAR: mat2, fld_enabled, val_enabled.
+    ENDIF.
+
+    IF error_code <> '0'.
+      CLEAR mat2. "-chked.
+      CASE error_code.
+        WHEN '1'.
+          MESSAGE 'Sin acceso a crear fórmulas (Z100)' TYPE 'S' DISPLAY LIKE 'E'.
+        WHEN '2'.
+          MESSAGE 'Sin acceso al material (UAML)' TYPE 'S' DISPLAY LIKE 'E'.
+        WHEN '3'.
+          MESSAGE 'Sin acceso al material (ZUZPP001)' TYPE 'S' DISPLAY LIKE 'E'.
+        WHEN '4'.
+          MESSAGE 'Sin autorización para visualizar la formula' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDCASE.
+    ENDIF.        "<< error_code?
+  ENDIF.        "<< cursor field
+ENDMODULE.                 " GET_MAT2  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  GET_MAT3  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE GET_MAT3 INPUT.
+  IF cursor_field = 'MAT3-MATNR'.
+    IF mat3-matnr IS NOT INITIAL.
+      PERFORM material_dat01 CHANGING mat3.
+      PERFORM material_auth TABLES   it_zpp001
+                                     it_uaml
+                            USING    wa_gpoaut
+                                     mat3-matnr
+                                     mat3-stlnr
+                                     mat3-stlbe
+                            CHANGING error_code.
+      IF NOT mat3-stlnr IS INITIAL.
+        fld_enabled = 1.
+        val_enabled = 1.
+      ELSE.
+        fld_enabled = 0.
+        val_enabled = 0.
+      ENDIF.
+    ELSE.
+      CLEAR: mat3, fld_enabled, val_enabled.
+    ENDIF.
+
+    IF error_code <> '0'.
+      CLEAR mat3. "-chked.
+      CASE error_code.
+        WHEN '1'.
+          MESSAGE 'Sin acceso a crear fórmulas (Z100)' TYPE 'S' DISPLAY LIKE 'E'.
+        WHEN '2'.
+          MESSAGE 'Sin acceso al material (UAML)' TYPE 'S' DISPLAY LIKE 'E'.
+        WHEN '3'.
+          MESSAGE 'Sin acceso al material (ZUZPP001)' TYPE 'S' DISPLAY LIKE 'E'.
+        WHEN '4'.
+          MESSAGE 'Sin autorización para visualizar la formula' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDCASE.
+    ENDIF.        "<< error_code?
+  ENDIF.        "<< cursor field
+ENDMODULE.                 " GET_MAT3  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0100 INPUT.
+  v_okcode = ok_code.
+  CLEAR: ok_code, sy-ucomm.
+  CASE v_okcode.
+    WHEN 'MM03'.
+      PERFORM last_mm03.
+    WHEN 'NEWDE'.
+      CALL SCREEN 200 STARTING AT 40 2.
+    WHEN 'NEWPT'.
+      CALL SCREEN 210 STARTING AT 50 2.
+    WHEN 'EXE'.
+
+      IF NOT mat1-matnr IS INITIAL.
+        IF mat1-chked IS INITIAL.
+          PERFORM material_dat01 CHANGING mat1.
+          PERFORM material_auth TABLES   it_zpp001
+                                         it_uaml
+                                USING    wa_gpoaut
+                                         mat1-matnr
+                                         mat1-stlnr
+                                         mat1-stlbe
+                                CHANGING error_code.
+          IF error_code <> '0'.
+            IF mat1-annam = sy-uname.
+              error_code = '0'.
+            ENDIF.        "<< autor del desarrollo?
+          ENDIF.        "<< sin acceso?
+          IF NOT mat1-stlnr IS INITIAL.
+            fld_enabled = 1.
+            val_enabled = 1.
+          ELSE.
+            fld_enabled = 0.
+            val_enabled = 0.
+          ENDIF.        "<< Lst. mat?
+          IF error_code <> '0'.
+            "CLEAR mat1-chked.
+            CLEAR mat1.
+            CASE error_code.
+              WHEN '1'.
+                MESSAGE 'Sin acceso a crear fórmulas (Z100)' TYPE 'S' DISPLAY LIKE 'E'.
+              WHEN '2'.
+                MESSAGE 'Sin acceso al material (UAML)' TYPE 'S' DISPLAY LIKE 'E'.
+              WHEN '3'.
+                MESSAGE 'Sin acceso al material (ZUZPP001)' TYPE 'S' DISPLAY LIKE 'E'.
+              WHEN '4'.
+                MESSAGE 'Sin autorización para visualizar la formula' TYPE 'S' DISPLAY LIKE 'E'.
+            ENDCASE.
+          ENDIF.        "<< error_code?
+        ENDIF.        "<< checked?
+      ENDIF.        "<< matnr1?
+      IF NOT mat2-matnr IS INITIAL.
+        IF mat2-chked IS INITIAL.
+          PERFORM material_dat01 CHANGING mat2.
+          PERFORM material_auth TABLES   it_zpp001
+                                         it_uaml
+                                USING    wa_gpoaut
+                                         mat2-matnr
+                                         mat2-stlnr
+                                         mat2-stlbe
+                                CHANGING error_code.
+          IF NOT mat2-stlnr IS INITIAL.
+            fld_enabled = 2.
+            val_enabled = 1.
+          ELSE.
+            fld_enabled = 1.
+            val_enabled = 1.
+          ENDIF.
+          IF error_code <> '0'.
+            "CLEAR mat2-chked.
+            CLEAR mat2.
+            CASE error_code.
+              WHEN '1'.
+                MESSAGE 'Sin acceso a crear fórmulas (Z100)' TYPE 'S' DISPLAY LIKE 'E'.
+              WHEN '2'.
+                MESSAGE 'Sin acceso al material (UAML)' TYPE 'S' DISPLAY LIKE 'E'.
+              WHEN '3'.
+                MESSAGE 'Sin acceso al material (ZUZPP001)' TYPE 'S' DISPLAY LIKE 'E'.
+              WHEN '4'.
+                MESSAGE 'Sin autorización para visualizar la formula' TYPE 'S' DISPLAY LIKE 'E'.
+            ENDCASE.
+          ENDIF.        "<< error_code?
+        ENDIF.        "<< checked?
+      ENDIF.        "<< matnr2?
+      IF NOT mat3-matnr IS INITIAL.
+        IF mat3-chked IS INITIAL.
+          PERFORM material_dat01 CHANGING mat3.
+          PERFORM material_auth TABLES   it_zpp001
+                                         it_uaml
+                                USING    wa_gpoaut
+                                         mat3-matnr
+                                         mat3-stlnr
+                                         mat3-stlbe
+                                CHANGING error_code.
+          IF NOT mat3-stlnr IS INITIAL.
+            fld_enabled = 1.
+            val_enabled = 1.
+          ELSE.
+            fld_enabled = 0.
+            val_enabled = 0.
+          ENDIF.
+          IF error_code <> '0'.
+            "CLEAR mat3-chked.
+            CLEAR mat3.
+            CASE error_code.
+              WHEN '1'.
+                MESSAGE 'Sin acceso a crear fórmulas (Z100)' TYPE 'S' DISPLAY LIKE 'E'.
+              WHEN '2'.
+                MESSAGE 'Sin acceso al material (UAML)' TYPE 'S' DISPLAY LIKE 'E'.
+              WHEN '3'.
+                MESSAGE 'Sin acceso al material (ZUZPP001)' TYPE 'S' DISPLAY LIKE 'E'.
+              WHEN '4'.
+                MESSAGE 'Sin autorización para visualizar la formula' TYPE 'S' DISPLAY LIKE 'E'.
+            ENDCASE.
+          ENDIF.        "<< error_code?
+        ENDIF.        "<< mat3 checked?
+      ENDIF.        "<< matnr3?
+      IF error_code = '0'.
+        IF mat2-chked IS INITIAL AND mat3-chked IS INITIAL.
+          IF mat1-stlnr IS INITIAL.
+*mat1(s/lista): tx_mode = 'C', cant. M1., opc {Guardar}
+            tx_mode = 'C'.
+            PERFORM tx_300_btns_init_create.
+          ELSE.
+*mat1(c/lista): tx_mode = 'D', opc {Modificar, Guardar}
+            tx_mode = 'D'.
+            PERFORM tx_300_btns_init_display.
+          ENDIF.
+          focus_bom = '1'.
+        ELSEIF mat1-chked = 'X' AND mat2-chked = 'X' AND mat3-chked IS INITIAL.
+          IF mat1-stlnr IS INITIAL.
+*mat1(s/lista)+ mat2: Msg 'Mat1 debe tener lista de mat cuando se ingresa Mat2'
+            error_code = '5'.
+            CLEAR: mat1, mat2, mat3.
+            MESSAGE 'Mat1 debe tener lista de mat cuando se ingresa Mat2' TYPE 'S' DISPLAY LIKE 'E'.
+          ELSE.
+            IF mat2-stlnr IS INITIAL.
+*mat1(c/lista)+ mat2(s/lista): tx_mode = 'C', cant. M2, opc {Crear}
+              tx_mode = 'C'.
+              PERFORM tx_300_btns_init_create.
+            ELSE.
+*mat1(c/lista)+ mat2(c/lista): tx_mode = 'D'.
+              tx_mode = 'D'.
+              PERFORM tx_300_btns_init_display.
+            ENDIF.
+            focus_bom = '2'.
+          ENDIF.
+        ELSE.
+          IF mat1-stlnr IS INITIAL.
+*mat1(s/lista)+ mat2 + mat3: Msg 'Mat1 debe tener lista de mat cuando se ingresa Mat2 y Mat3'
+            error_code = '5'.
+            CLEAR: mat1, mat2, mat3.
+            MESSAGE 'Mat1 debe tener lista de mat cuando se ingresa Mat2 y Mat3' TYPE 'S' DISPLAY LIKE 'E'.
+          ELSE.
+            IF mat2-stlnr IS INITIAL.
+*mat1(c/lista)+ mat2(s/lista)+ mat3: Msg 'Mat2 debe tener lista de mat cuando se ingresa M1 y M3'
+              error_code = '5'.
+              CLEAR: mat1, mat2, mat3.
+              MESSAGE 'Mat2 debe tener lista de mat cuando se ingresa M1 y M3' TYPE 'S' DISPLAY LIKE 'E'.
+            ELSE.
+              IF mat3-stlnr IS INITIAL.
+*mat1(c/lista)+ mat2(c/lista)+ mat3(s/lista): tx_mode = 'C', cant. M3, opc{Crear}
+                tx_mode = 'C'.
+                PERFORM tx_300_btns_init_create.
+              ELSE.
+*mat1(c/lista)+ mat2(c/lista)+ mat3(c/lista): tx_mode = 'D'.
+                tx_mode = 'D'.
+                PERFORM tx_300_btns_init_display.
+              ENDIF.
+              focus_bom = '3'.
+            ENDIF.        "<< mat2-stlnr
+          ENDIF.        "<< mat1-stlnr
+        ENDIF.        "<< mat1
+      ENDIF.        "<< error_code?
+      IF error_code = '0' AND
+         ( NOT mat1 IS INITIAL OR NOT mat2 IS INITIAL OR NOT mat3 IS INITIAL ).
+        PERFORM exe_0100.
+      ENDIF.        "<< error_code?
+  ENDCASE.
+  CLEAR v_okcode.
+ENDMODULE.                 " USER_COMMAND_0100  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE EXIT_COMMAND_0200 INPUT.
+  CASE ok_code.
+    WHEN 'CANC_200'.
+      IF NOT obj_editor_0200 IS INITIAL.
+        CALL METHOD obj_editor_0200->free
+          EXCEPTIONS
+            OTHERS = 1.
+      ENDIF.
+      FREE obj_editor_0200.
+      IF NOT cc_editor_0200 IS INITIAL.
+        CALL METHOD cc_editor_0200->free
+          EXCEPTIONS
+            OTHERS = 1.
+      ENDIF.
+      FREE cc_editor_0200.
+      CALL METHOD cl_gui_cfw=>flush
+        EXCEPTIONS
+          OTHERS = 1.
+
+      CLEAR: tx_mode_0200, wa_insmat.
+
+      SET SCREEN 0.
+      LEAVE SCREEN.
+  ENDCASE.
+ENDMODULE.                 " EXIT_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  GET_CURSOR_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE GET_CURSOR_0200 INPUT.
+  GET CURSOR FIELD cursor_field.
+  CONDENSE cursor_field.
+  GET CURSOR LINE cursor_line.
+ENDMODULE.                 " GET_CURSOR_0200  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0200 INPUT.
+  v_okcode = ok_code.
+  CASE v_okcode.
+    WHEN 'MM01_200'.
+      FIND FIRST OCCURRENCE OF REGEX '[^a-zA-Z]' IN wa_matdevcod-iniciales.
+      IF sy-subrc = 0.
+        "SET CURSOR FIELD 'WA_MATDEVCOD-INICIALES'.
+        MESSAGE 'Solo letras en Autor (2 letras)' TYPE 'S' DISPLAY LIKE 'E'.
+        EXIT.
+      ENDIF.        "<<
+      IF wa_matdevcod-codigo IS INITIAL.
+        MESSAGE 'Ingrese un código' TYPE 'S' DISPLAY LIKE 'E'.
+        EXIT.
+      ENDIF.
+      FIND FIRST OCCURRENCE OF REGEX '[^a-zA-Z]' IN wa_matdevcod-ensayo.
+      IF sy-subrc = 0.
+        "SET CURSOR FIELD 'WA_MATDEVCOD-ENSAYO'.
+        MESSAGE 'Solo letras para Ensayo (2 letras)' TYPE 'S' DISPLAY LIKE 'E'.
+        EXIT.
+      ENDIF.        "<<
+      CONCATENATE wa_matdevcod-iniciales wa_matdevcod-codigo wa_matdevcod-ensayo
+             INTO wa_insmat-matnr.
+*      IF strlen( wa_matdevcod-iniciales ) < 2.
+*        MESSAGE 'Autor debe tener 2 letras' TYPE 'S' DISPLAY LIKE 'E'.
+*      ENDIF.        "<< [2]
+
+      IF wa_insmat-maktx IS INITIAL.
+        MESSAGE 'Ingrese la descripción' TYPE 'S' DISPLAY LIKE 'E'.
+        EXIT.
+      ENDIF.
+      IF wa_insmat-matkl IS INITIAL.
+        MESSAGE 'Ingrese un gpo. de artículos' TYPE 'S' DISPLAY LIKE 'E'.
+        EXIT.
+      ENDIF.
+      SELECT SINGLE matnr INTO new_matnr FROM mara
+        WHERE matnr = wa_insmat-matnr.
+      IF sy-subrc <> 0.
+        PERFORM mm01_des USING    wa_insmat
+                         CHANGING wa_return_matdes
+                                  new_matnr.
+        IF wa_return_matdes-type = 'S'.
+          PERFORM save_editor_text TABLES it_tline
+                                   USING  new_matnr.
+          MESSAGE wa_return_matdes-message TYPE 'S'.
+          IF wa_insmat-ref_matnr IS INITIAL.
+            mat1-matnr = new_matnr.
+          ELSE.
+            mat1-matnr = wa_insmat-ref_matnr.
+            mat2-matnr = new_matnr.
+          ENDIF.
+          obj_editor_0200->delete_text( ).
+          CLEAR tx_mode_0200.
+          LEAVE TO SCREEN 0.
+        ELSE.
+          MESSAGE wa_return_matdes-message TYPE 'S' DISPLAY LIKE 'E'.
+        ENDIF.
+      ELSE.
+        MESSAGE 'Código de desarrollo ya existe, eliga otro' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+  ENDCASE.
+  CLEAR v_okcode.
+ENDMODULE.                 " USER_COMMAND_0200  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  GET_REF_MAT_0200  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE GET_REF_MAT_0200 INPUT.
+  IF cursor_field = 'WA_INSMAT-REF_MATNR'.
+*--------------------------------------------------------------------*
+    CLEAR matbom.
+    matbom-matnr = wa_insmat-ref_matnr.
+    PERFORM material_dat01 CHANGING matbom.
+    PERFORM material_auth TABLES   it_zpp001
+                                   it_uaml
+                          USING    wa_gpoaut
+                                   matbom-matnr
+                                   matbom-stlnr
+                                   matbom-stlbe
+                          CHANGING error_code.
+    IF error_code <> '0'.
+      IF matbom-mtart = 'ZFER' AND matbom-annam <> sy-uname.
+        "error_code = '0'.
+        MESSAGE 'Sin autorización para este material' TYPE 'S' DISPLAY LIKE 'E'.
+*        EXIT.
+      ENDIF.        "<< autor del desarrollo?
+*    ENDIF.        "<< sin acceso?
+      REFRESH it_tline.
+      CLEAR wa_insmat.
+      wa_insmat-ref_matnr = matbom-matnr.
+      CLEAR matbom.
+*--------------------------------------------------------------------*
+    ELSE.
+      PERFORM material_get_detail TABLES   it_tline
+                                  USING    wa_insmat-ref_matnr
+                                  CHANGING wa_insmat
+                                           wa_matdevcod.
+      PERFORM tline_to_editor TABLES   it_tline
+                              CHANGING obj_editor_0200.
+    ENDIF.        "<< error_code?
+  ENDIF.        "<< ref_matnr?
+ENDMODULE.                 " GET_REF_MAT_0200  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  VALIDA_INICIALES  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE VALIDA_INICIALES INPUT.
+  IF cursor_field = 'WA_MATDEVCOD-INICIALES'.
+    "DEMO_REGEX_TOY:[A-Z]{2}[0-9]{5}[A-Z]{2}$
+    FIND FIRST OCCURRENCE OF REGEX '[^a-zA-Z]' IN wa_matdevcod-iniciales.
+    IF sy-subrc = 0.
+      MESSAGE 'Solo letras en Autor (2 letras)' TYPE 'S' DISPLAY LIKE 'E'.
+      EXIT.
+    ELSE.
+      CONCATENATE wa_matdevcod-iniciales wa_matdevcod-codigo wa_matdevcod-ensayo
+             INTO wa_insmat-matnr.
+      cursor_field = 'WA_MATDEVCOD-CODIGO'.
+    ENDIF.        "<<
+  ENDIF.
+ENDMODULE.                 " VALIDA_INICIALES  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  VALIDA_CODIGO  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE VALIDA_CODIGO INPUT.
+  IF cursor_field = 'WA_MATDEVCOD-CODIGO'.
+    IF wa_matdevcod-codigo IS INITIAL.
+      MESSAGE 'Ingrese un código de material' TYPE 'S' DISPLAY LIKE 'E'.
+    ELSE.
+      CONCATENATE wa_matdevcod-iniciales wa_matdevcod-codigo wa_matdevcod-ensayo
+             INTO wa_insmat-matnr.
+      cursor_field = 'WA_MATDEVCOD-ENSAYO'.
+    ENDIF.
+  ENDIF.
+ENDMODULE.                 " VALIDA_CODIGO  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  VALIDA_ENSAYO  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE VALIDA_ENSAYO INPUT.
+  IF cursor_field = 'WA_MATDEVCOD-ENSAYO'.
+    FIND FIRST OCCURRENCE OF REGEX '[^a-zA-Z]' IN wa_matdevcod-ensayo.
+    IF sy-subrc = 0.
+      MESSAGE 'Solo letras en Ensayo (2 letras)' TYPE 'S' DISPLAY LIKE 'E'.
+      EXIT.
+    ELSE.
+      CONCATENATE wa_matdevcod-iniciales wa_matdevcod-codigo wa_matdevcod-ensayo
+             INTO wa_insmat-matnr.
+      cursor_field = 'WA_INSMAT-MAKTX'.
+    ENDIF.        "<<
+  ENDIF.
+ENDMODULE.                 " VALIDA_ENSAYO  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE EXIT_COMMAND_0300 INPUT.
+  v_okcode = ok_code.
+  CASE v_okcode.
+    WHEN 'BACK'.
+*>>CLOSE_BOM
+*      PERFORM csap_mat_bom_close USING 'X'.
+      PERFORM popup_to_confirm USING    'Salir'
+                                        'Se perderán los cambios no guardados, ¿desea salir de la transacción?'
+                               CHANGING popup_answer.
+      IF popup_answer = '1'.
+        CLEAR tx_mode.
+        LEAVE TO SCREEN 100.
+      ENDIF.
+
+    WHEN 'EXIT'.
+      PERFORM popup_to_confirm USING    'Salir de la aplicación'
+                                        '¿Desea salir de la transacción?'  "text-p01
+                               CHANGING popup_answer.
+      IF popup_answer = '1'.
+        CLEAR tx_mode.
+        SET SCREEN 0.
+        LEAVE PROGRAM.
+      ENDIF.
+    WHEN OTHERS.
+  ENDCASE.
+ENDMODULE.                 " EXIT_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  GET_CURSOR_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE GET_CURSOR_0300 INPUT.
+  GET CURSOR FIELD cursor_field.
+  CONDENSE cursor_field.
+  GET CURSOR LINE cursor_line.
+ENDMODULE.                 " GET_CURSOR_0300  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  TB_USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE TB_USER_COMMAND_0300 INPUT.
+  v_okcode = sy-ucomm.
+  IF NOT ok_code IS INITIAL AND v_okcode(3) = 'TC_'.
+    PERFORM tb_usr_cmd USING 'TC_POS'
+                             'IT_POS'
+                             'SELECT'
+                             v_okcode. "ok_code.
+  ENDIF.
+  PERFORM total_line CHANGING zstr_tot.
+  sy-ucomm = v_okcode.
+ENDMODULE.                 " TB_USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0300 INPUT.
+  v_okcode = ok_code.
+  CASE v_okcode.
+    WHEN 'FNEW'.
+      IF NOT it_pos[] IS INITIAL.
+        tx_mode = 'C'.
+        IF ( zstr_tot-menge1 <> const_menge AND focus_bom = '1' ) OR
+           ( zstr_tot-menge2 <> const_menge AND focus_bom = '2' ) OR
+           ( zstr_tot-menge3 <> const_menge AND focus_bom = '3' ).
+          PERFORM popup_to_confirm USING    'Diferencias'
+                                            'Cantidades diferentes de 1000 gramos, ¿Desea continuar?'  "text-p01
+                                   CHANGING popup_answer.
+          IF popup_answer <> '1'.
+            RETURN.
+          ENDIF.
+        ENDIF.
+        PERFORM cs01 USING    mat1
+                              mat2
+                              mat3
+                     CHANGING v_subrc
+                              matbom.
+        IF v_subrc = 0.
+          CLEAR tx_mode.
+          LEAVE TO SCREEN 100.
+        ENDIF.
+      ELSE.
+        MESSAGE 'No existen posiciones para guardar' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+    WHEN 'FUPD'.
+      PERFORM chkaut USING    mat1-stlbe
+                              const_actvt_02
+                     CHANGING v_subrc.
+      IF v_subrc = 0.
+        IF focus_bom = '1'.
+          IF mat1-locke IS INITIAL.
+            tx_mode = 'M'.
+            PERFORM tx_300_btns_on_update.
+          ELSE.
+            MESSAGE 'Material bloqueado por impresión' TYPE 'S' DISPLAY LIKE 'E'.
+          ENDIF.
+        ELSE.
+          MESSAGE 'Modificación solo para material 1' TYPE 'S' DISPLAY LIKE 'E'.
+        ENDIF.
+      ELSE.
+        MESSAGE 'Modificación solo para autor de la lista' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+    WHEN 'FVIE'.
+      tx_mode = 'D'.
+      PERFORM tx_300_btns_on_display.
+    WHEN 'FSAV'.
+      IF ( zstr_tot-menge1 <> const_menge AND focus_bom = '1' ) OR
+         ( zstr_tot-menge2 <> const_menge AND focus_bom = '2' ) OR
+         ( zstr_tot-menge3 <> const_menge AND focus_bom = '3' ).
+        PERFORM popup_to_confirm USING    'Diferencias'
+                                          'Cantidades diferentes de 1000 gramos, ¿Desea continuar?'  "text-p01
+                                 CHANGING popup_answer.
+        IF popup_answer <> '1'.
+          RETURN.
+        ENDIF.
+      ENDIF.
+
+      PERFORM cs02 USING    mat1
+                            mat2
+                            mat3
+                   CHANGING v_subrc
+                            matbom.
+      IF v_subrc = 0.
+        CLEAR tx_mode.
+        MESSAGE 'Cambios realizados' TYPE 'S'.
+        LEAVE TO SCREEN 100.
+      ENDIF.
+    WHEN 'FPRN'.
+      IF focus_bom <> '1'.
+        MESSAGE 'Impresión solo para lista 1' TYPE 'S' DISPLAY LIKE 'E'.
+      ELSE.
+        IF NOT it_pos[] IS INITIAL.
+          CLEAR fprn_bmeng.
+          SELECT SINGLE bmeng INTO fprn_bmeng FROM stko
+            WHERE stlty = 'M'
+              AND stlnr = mat1-stlnr
+              AND stlal = mat1-stlal.
+          IF fprn_bmeng IS NOT INITIAL.
+*            MESSAGE 'Cantidad base diferente de 1000 g'  TYPE 'I'.
+            fprn_bmeng = fprn_bmeng / 10.
+            txt_bmeng  = fprn_bmeng.
+          ENDIF.
+          PERFORM popup_get_value USING    'Imprimir fórmula'
+                                           'STKO'
+                                           'BMENG'
+                                           fprn_bmeng
+                                  CHANGING txt_bmeng. "fprn_bmeng.
+          IF sy-subrc = 0.
+            CLEAR fprn_bmeng.
+            fprn_bmeng = txt_bmeng.
+            IF fprn_bmeng > 0.
+              PERFORM prn_mat USING mat1-matnr
+                                    zstr_tot-verpr
+                                    fprn_bmeng.
+            ENDIF.
+          ENDIF.        "<< popup?
+        ENDIF.        "<< it_pos[]?
+      ENDIF.        "<< focus_bom = 1?
+    WHEN 'FIFR'.
+*Tiene lista de material?
+      wa_ifraval-matnr = mat1-matnr.
+      wa_ifraval-werks = const_werks.
+      wa_ifraval-menge = const_menge.
+      wa_ifraval-maktx = mat1-maktx.
+      CALL SCREEN 310 STARTING AT 40 2.
+
+    WHEN 'FPIC'.
+      PERFORM chkaut USING    mat1-stlbe
+                              const_actvt_02
+                     CHANGING v_subrc.
+      IF v_subrc = 0.
+        PERFORM popup_to_confirm USING    'Guardar precios'
+                                          'Se guardaran los precios de los componentes a día de hoy, ¿Desea continuar?'
+                                 CHANGING popup_answer.
+        IF popup_answer <> '1'.
+          RETURN.
+        ELSE.
+          PERFORM prices_recording_process USING    mat1
+                                                    mat2
+                                                    mat3
+                                           CHANGING v_subrc
+                                                    matbom.
+        ENDIF.
+      ELSE.
+        MESSAGE 'Grabación restringida para este material' TYPE 'I' DISPLAY LIKE 'E'.
+      ENDIF.        "<< auth?
+  ENDCASE.
+  CLEAR ok_code.
+ENDMODULE.                 " USER_COMMAND_0300  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  ON_MAKTX  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE ON_MAKTX INPUT.
+  IF cursor_field = 'WA_POS-IDNRK'.
+    CLEAR txt_olor.
+    PERFORM f4_material USING    txt_olor
+                                 wa_pos-idnrk
+                        CHANGING matnr_buscado.
+    IF NOT matnr_buscado IS INITIAL.
+      PERFORM is_duplicated USING    matnr_buscado
+                            CHANGING flg_duplicated.
+      IF flg_duplicated IS INITIAL.
+        wa_pos-idnrk = matnr_buscado.
+      ELSE.
+        CLEAR wa_pos-idnrk.
+        MESSAGE 'Material ya existe en la lista!' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+    ENDIF.        "<< matnr_buscado?
+  ENDIF.
+ENDMODULE.                 " ON_MAKTX  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  ON_EXTWG  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE ON_EXTWG INPUT.
+  IF cursor_field = 'WA_POS-EXTWG'.
+    PERFORM f4_material USING    wa_pos-extwg
+                                 wa_pos-idnrk
+                        CHANGING matnr_buscado.
+    IF NOT matnr_buscado IS INITIAL.
+      PERFORM is_duplicated USING    matnr_buscado
+                            CHANGING flg_duplicated.
+      IF flg_duplicated IS INITIAL.
+        wa_pos-idnrk = matnr_buscado.
+      ELSE.
+        CLEAR wa_pos-idnrk.
+        MESSAGE 'Material ya existe en la lista!' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+    ENDIF.        "<< matnr_buscado?
+  ENDIF.
+ENDMODULE.                 " ON_EXTWG  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  TC_MODIFY  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE TC_MODIFY INPUT.
+  IF ok_code IS INITIAL AND NOT wa_pos-idnrk IS INITIAL.
+    IF flg_duplicated IS INITIAL. " AND NOT wa_pos-idnrk IS INITIAL.
+      PERFORM material_position_data CHANGING wa_pos.
+    ENDIF.        "<< is duplicated?
+
+    PERFORM critical_material USING    wa_pos-idnrk
+                                       const_werks
+                              CHANGING wa_pos-icon02.
+    IF focus_bom = '1'.
+      PERFORM convert_date_to_external USING    sy-datum
+                                       CHANGING bom_datuv.
+      IF NOT wa_pos-verpr IS INITIAL AND NOT wa_pos-menge1 IS INITIAL.
+*--------------------------------------------------------------------*
+        REFRESH it_message.
+        PERFORM calo_init_api.
+*--------------------------------------------------------------------*
+        IF mat1-stlnr IS INITIAL.  "AND NOT wa_pos-menge1 IS INITIAL.
+          PERFORM cs01_by_pos USING    wa_pos
+                              CHANGING mat1
+                                       v_subrc.
+          IF v_subrc = 0.
+            tx_mode = 'M'.
+            PERFORM tx_300_btns_on_update.
+*>> OPEN BOM
+            IF NOT mat1-stlnr IS INITIAL.
+              lst_item_no  = '0010'.
+              wa_pos-posnr = lst_item_no.
+            ENDIF.        "<< new stlnr?
+          ENDIF.        "<< cs01?
+        ELSE.
+*>> SAVE POS
+          PERFORM cs02_by_pos USING    mat1
+                                       wa_pos
+                                       ''
+                              CHANGING v_subrc
+                                       lst_item_no.
+          IF v_subrc = 0.
+            wa_pos-posnr = lst_item_no.
+            CLEAR wa_pos-icon01.
+          ENDIF.        "<< cs02?
+        ENDIF.        "<< stlnr initial?
+*--------------------------------------------------------------------*
+        IF v_subrc <> 0.
+          PERFORM calo_log_read_messages TABLES it_message.
+          REFRESH it_mtab.
+          LOOP AT it_message INTO wa_message.
+            CLEAR wa_mtab.
+            wa_mtab-msgid = wa_message-msg_id.
+            wa_mtab-msgty = wa_message-msg_type.
+            wa_mtab-msgno = wa_message-msg_no.
+            wa_mtab-msgv1 = wa_message-msg_v1.
+            wa_mtab-msgv2 = wa_message-msg_v2.
+            wa_mtab-msgv3 = wa_message-msg_v3.
+            wa_mtab-msgv4 = wa_message-msg_v4.
+            APPEND wa_mtab TO it_mtab.
+          ENDLOOP.
+          PERFORM c14z_messages_show_as_popup TABLES it_mtab.
+        ENDIF.
+*--------------------------------------------------------------------*
+      ELSE.
+        IF NOT mat1-stlnr IS INITIAL.
+          IF NOT wa_pos-posnr IS INITIAL.
+            PERFORM cs02_by_pos USING    mat1
+                                         wa_pos
+                                         'X'
+                                CHANGING v_subrc
+                                         lst_item_no.
+            wa_pos-icon01 = '@11@'.
+          ENDIF.        "<< está guardado?
+          CLEAR: wa_pos-posnr, wa_pos-postp.  "wa_pos-lstmat
+        ENDIF.        "<< lst. mat?
+*--------------------------------------------------------------------*
+      ENDIF.        "<< menge1 initial?
+    ENDIF.        "<< focus_bom?
+  ENDIF.        "<< ok_code & !idnrk?
+*  IF NOT wa_pos-index IS INITIAL AND NOT wa_pos-posnr IS INITIAL.
+    MODIFY it_pos FROM wa_pos INDEX tc_pos-current_line.
+*  ENDIF.
+ENDMODULE.                 " TC_MODIFY  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  F4_EXTWG_HELP  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE ON_F4_EXTWG_HELP INPUT.
+  PERFORM f4_extwg_hlp CHANGING wa_pos-extwg.
+ENDMODULE.                 " F4_EXTWG_HELP  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_COMMAND_0310  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE EXIT_COMMAND_0310 INPUT.
+  CASE ok_code.
+    WHEN 'CANC_310'.
+      IF NOT obj_editor_0200 IS INITIAL.
+        CALL METHOD obj_editor_0200->free
+          EXCEPTIONS
+            OTHERS = 1.
+      ENDIF.
+      FREE obj_editor_0200.
+      IF NOT cc_editor_0200 IS INITIAL.
+        CALL METHOD cc_editor_0200->free
+          EXCEPTIONS
+            OTHERS = 1.
+      ENDIF.
+      FREE cc_editor_0200.
+      CALL METHOD cl_gui_cfw=>flush
+        EXCEPTIONS
+          OTHERS = 1.
+
+      CLEAR tx_mode_0200.
+
+      SET SCREEN 0.
+      LEAVE SCREEN.
+  ENDCASE.
+ENDMODULE.                 " EXIT_COMMAND_0310  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0310  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0310 INPUT.
+  v_okcode = ok_code.
+  IF v_okcode = 'IFRA_310'.
+    IF wa_ifraval-clase IS INITIAL OR wa_ifraval-pct IS INITIAL.
+      MESSAGE 'Ingrese valores clase y porcentaje' TYPE 'S' DISPLAY LIKE 'E'.
+    ELSE.
+      PERFORM co_material_matprim TABLES   it_ifra_stpo
+                                           it_ifra_mp
+                                           it_ifra_fam
+                                           it_ifra_nlis
+                                           it_ifra_proh
+                                  USING    wa_ifraval-matnr "wa_pos-idnrk
+                                           const_werks
+                                           const_menge
+                                           'X'
+                                  CHANGING ifra_verpr
+                                           ifra_precio.
+      PERFORM popup_ifra_process TABLES it_ifra_stpo
+                                        it_ifra_mp
+                                        it_ifra_fam
+                                        it_ifra_nlis
+                                 USING  wa_ifraval.
+      IF NOT it_line[] IS INITIAL.
+        CALL METHOD obj_editor_0200->set_text_as_r3table
+          EXPORTING
+            table  = it_line
+          EXCEPTIONS
+            OTHERS = 1.
+      ENDIF.
+    ENDIF.        "<< clase | pct?
+  ENDIF.        "<< v_okcode?
+  CLEAR: ok_code, v_okcode.
+ENDMODULE.                 " USER_COMMAND_0310  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  EXIT_COMMAND_0210  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE EXIT_COMMAND_0210 INPUT.
+  CASE ok_code.
+    WHEN 'CANC_210'.
+      CLEAR: tx_mode_0200, wa_insmat.
+
+      SET SCREEN 0.
+      LEAVE SCREEN.
+  ENDCASE.
+ENDMODULE.                 " EXIT_COMMAND_0210  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  GET_CURSOR_0210  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE GET_CURSOR_0210 INPUT.
+  GET CURSOR FIELD cursor_field.
+  CONDENSE cursor_field.
+  GET CURSOR LINE cursor_line.
+ENDMODULE.                 " GET_CURSOR_0210  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  GET_REF_MAT_0210  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE GET_REF_MAT_0210 INPUT.
+  IF cursor_field = 'WA_INSMAT-REF_MATNR'.
+    PERFORM material_get_detail TABLES   it_tline
+                                USING    wa_insmat-ref_matnr
+                                CHANGING wa_insmat
+                                         wa_matdevcod.
+    wa_insmat-matnr = ''.
+  ENDIF.
+ENDMODULE.                 " GET_REF_MAT_0210  INPUT
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_0210  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE USER_COMMAND_0210 INPUT.
+  v_okcode = ok_code.
+  CASE v_okcode.
+    WHEN 'MM01_210'.
+      IF wa_insmat-matnr IS INITIAL.
+        MESSAGE 'Ingrese el número de material' TYPE 'S' DISPLAY LIKE 'E'.
+        EXIT.
+      ENDIF.
+      IF wa_insmat-maktx IS INITIAL.
+        MESSAGE 'Ingrese la descripción' TYPE 'S' DISPLAY LIKE 'E'.
+        EXIT.
+      ENDIF.
+      IF wa_insmat-matkl IS INITIAL.
+        MESSAGE 'Ingrese un gpo. de artículos' TYPE 'S' DISPLAY LIKE 'E'.
+        EXIT.
+      ENDIF.
+      SELECT SINGLE matnr INTO new_matnr FROM mara
+        WHERE matnr = wa_insmat-matnr.
+      IF sy-subrc <> 0.
+        PERFORM mm01_pt TABLES   it_tline
+                        USING    wa_insmat
+                        CHANGING wa_return_matdes
+                                 new_matnr.
+        IF new_matnr IS NOT INITIAL.
+          CLEAR: mat1, tx_mode_0200.
+          mat1-matnr = new_matnr.
+          MESSAGE 'Material PT creado' TYPE 'S'.
+          LEAVE TO SCREEN 0.
+        ELSE.
+          MESSAGE wa_return_matdes-message TYPE 'S' DISPLAY LIKE 'E'.
+        ENDIF.
+      ELSE.
+        MESSAGE 'Código PT ya existe, eliga otro' TYPE 'S' DISPLAY LIKE 'E'.
+      ENDIF.
+  ENDCASE.
+  CLEAR v_okcode.
+ENDMODULE.                 " USER_COMMAND_0210  INPUT
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701

@@ -1,0 +1,216 @@
+*&---------------------------------------------------------------------*
+*&  Include           ZPP_INC_BEING01_TOP
+*&---------------------------------------------------------------------*
+
+*--------------------------------------------------------------------*
+TYPE-POOLS slis.
+
+CONSTANTS: const_werks TYPE t001k-bwkey VALUE 'IGUA',
+           const_stlty TYPE stpo-stlty VALUE 'M',
+           const_menge TYPE stpo-menge VALUE '1000'.
+*--------------------------------------------------------------------*
+DATA: gui_pic_container TYPE REF TO cl_gui_custom_container,
+      gui_picture       TYPE REF TO cl_gui_picture,
+      gui_cndp_url      TYPE cndp_url.
+*--------------------------------------------------------------------*
+DATA it_funcod_excluding TYPE TABLE OF sy-ucomm.
+*--------------------------------------------------------------------*
+DATA: wa_gpoaut TYPE zugpo_aut,
+      it_zpp001 TYPE TABLE OF zuzpp001,
+      it_uaml   TYPE TABLE OF zpp_uaml,
+      subrc_aut TYPE sysubrc.
+*--------------------------------------------------------------------*
+DATA: ok_code      TYPE sy-ucomm,
+      v_okcode     TYPE sy-ucomm,
+      tb_cmd       TYPE sy-ucomm,
+      v_subrc      TYPE sysubrc,
+      popup_answer TYPE c,
+      tx_mode      TYPE c, "Modo TCODE {[I]nitial, [C]reate, [M]odify, [D]isplay}
+      focus_bom    TYPE c,
+      cursor_field TYPE dynfieldvalue,  "dynpread-fieldvalue
+      cursor_line  TYPE i,
+      error_code   TYPE c.
+*--------------------------------------------------------------------*
+DATA: BEGIN OF zstr_mat,
+        matnr LIKE mast-matnr,  "No. material
+        werks LIKE mast-werks,  "Centro
+        stlan LIKE mast-stlan,  "Utilización de la lst. de mat.
+        stlnr LIKE mast-stlnr,  "Lst. de materiales
+        stlal LIKE mast-stlal,  "Alternativa de la lst.
+        maktx LIKE makt-maktx,  "Txt. material
+        stlbe LIKE stzu-stlbe,  "Gpo. de aut.
+        annam LIKE mast-annam,  "Creador del desarrollo (ZFER)
+        mtart LIKE mara-mtart,  "Tipo de material
+        locke TYPE c,           "Bloqueo por impresión
+        chked TYPE c,
+      END OF zstr_mat.
+
+DATA: mat1    LIKE zstr_mat,
+      mat2    LIKE zstr_mat,
+      mat3    LIKE zstr_mat,
+      matbom  LIKE zstr_mat,
+      bapiret TYPE bapiret2.
+*--------------------------------------------------------------------*
+*0100
+*--------------------------------------------------------------------*
+DATA: fld_enabled TYPE i,
+      val_enabled TYPE i.
+
+DATA: it_stas TYPE TABLE OF stas,
+      it_stpo TYPE TABLE OF stpo.
+*DATA: it_stas TYPE SORTED TABLE OF stpo WITH UNIQUE KEY stlty stlnr stlkn stpoz,
+*      it_stpo TYPE SORTED TABLE OF stas WITH UNIQUE KEY stlty stlnr stlal stlkn stasz.
+DATA: wa_stas TYPE stas,
+      wa_stpo TYPE stpo.
+*--------------------------------------------------------------------*
+* Guardar en linea
+DATA: it_stpo_api02 TYPE TABLE OF stpo_api02,
+      it_stko_api02 TYPE TABLE OF stko_api02,
+      wa_stpo_api02 TYPE stpo_api02,
+      wa_stko_api02 TYPE stko_api02,
+      bom_datuv     TYPE csap_mbom-datuv,
+      lst_item_no   TYPE stpo_api02-item_no.
+*      bom_no        TYPE stko_api02-bom_no.
+*--------------------------------------------------------------------*
+*0200
+*--------------------------------------------------------------------*
+DATA: cc_editor_0200  TYPE REF TO cl_gui_custom_container,
+      obj_editor_0200 TYPE REF TO cl_gui_textedit.
+
+TYPES: BEGIN OF ty_matdevcode,
+        iniciales TYPE rnval, "autor
+        codigo    TYPE kblbpent,
+        ensayo    TYPE rnval,
+       END OF ty_matdevcode.
+
+DATA: wa_matdevcod TYPE ty_matdevcode.
+
+TYPES: BEGIN OF ty_creatematerial,
+        matnr     TYPE mara-matnr,
+        maktx     TYPE makt-maktx,
+        meins     TYPE mara-meins,
+        matkl     TYPE mara-matkl,
+        bismt     TYPE mara-bismt,
+        groes     TYPE mara-groes,
+        ref_matnr TYPE ref_matnr,
+        copy_bom  TYPE cs_copy_bom,
+        NORMT     TYPE MARA-NORMT,      "RVEGA agregar campo para numero de proyecto
+        ZEINR     TYPE MARA-ZEINR,
+       END OF ty_creatematerial.
+
+DATA: tx_mode_0200 TYPE c,
+      wa_insmat    TYPE ty_creatematerial.
+
+DATA: wa_return_matdes TYPE bapiret2,
+      new_matnr        TYPE matnr.
+
+DATA: wa_line TYPE text120,
+      it_line TYPE TABLE OF text120.
+
+DATA: it_tline TYPE TABLE OF tline,
+      wa_tline TYPE tline.
+*--------------------------------------------------------------------*
+*0210
+*--------------------------------------------------------------------*
+DATA const_modelopt01 TYPE matnr VALUE 'MODELO_PT01'.
+
+*--------------------------------------------------------------------*
+*0300
+*--------------------------------------------------------------------*
+CONTROLS: tc_pos TYPE TABLEVIEW USING SCREEN 0300.
+
+DATA: tc_row_count TYPE sy-loopc,
+      tc_pos_col   LIKE LINE OF tc_pos-cols,
+      tc_line      TYPE i,
+      tc_line_aux  TYPE i.
+
+DATA: BEGIN OF zstr_tot,
+        verpr  LIKE mbew-verpr,
+        menge1 TYPE p DECIMALS 2, "Cantidad "stpo-menge,
+        verpr1 TYPE mbew-verpr,   "Precio medio variable/Precio interno periódico
+        menge2 TYPE p DECIMALS 2, "Cantidad "stpo-menge,
+        verpr2 TYPE mbew-verpr,   "Precio medio variable/Precio interno periódico
+        menge3 TYPE p DECIMALS 2, "Cantidad "stpo-menge,
+        verpr3 TYPE mbew-verpr,   "Precio medio variable/Precio interno periódico
+      END OF zstr_tot.
+
+TYPES: BEGIN OF ty_pos,
+        select,
+        index   TYPE stpo-posnr,  "Índice (Campo visual)
+        lstmat  TYPE c,
+        posnr   TYPE stpo-posnr,  "No. pos. de lista de materiales
+        postp   TYPE stpo-postp,  "Tipo de pos. (Lista de materiales)
+        idnrk   TYPE stpo-idnrk,  "Componente de lista de mat.
+        maktx   TYPE makt-maktx,  "Descripción
+        extwg   TYPE mara-extwg,  "Clave de olor
+        verpr   TYPE mbew-verpr,  "Precio medio variable/Precio interno periódico
+        waers   TYPE t001-waers,  "Clave de moneda
+        meins   TYPE stpo-meins,  "Unidad de medida del componente
+        menge1  TYPE p DECIMALS 3, "Cantidad "stpo-menge,
+        verpr1  TYPE mbew-verpr, "Precio medio variable/Precio interno periódico
+        menge2  TYPE p DECIMALS 3, "Cantidad "stpo-menge,
+        verpr2  TYPE mbew-verpr, "Precio medio variable/Precio interno periódico
+        menge3  TYPE p DECIMALS 3, "Cantidad "stpo-menge,
+        verpr3  TYPE mbew-verpr,  "Precio medio variable/Precio interno periódico
+
+        icon01  TYPE stati_kk, "icon_sprps,  "Ico borrado
+        icon02  TYPE stati_kk,  "Ico crítico
+*        icon03  TYPE stati_kk,  "Validación IFRA
+       END OF ty_pos.
+
+DATA: it_pos TYPE STANDARD TABLE OF ty_pos INITIAL SIZE 0,
+      wa_pos TYPE ty_pos.
+
+TYPES: BEGIN OF esp1_message_wa_type,
+          msgid  LIKE sy-msgid,
+          msgty  LIKE sy-msgty,
+          msgno  LIKE sy-msgno,
+          msgv1  LIKE sy-msgv1,
+          msgv2  LIKE sy-msgv2,
+          msgv3  LIKE sy-msgv3,
+          msgv4  LIKE sy-msgv4,
+          lineno LIKE mesg-zeile,
+        END OF esp1_message_wa_type.
+
+TYPES: esp1_message_tab_type TYPE esp1_message_wa_type OCCURS 20.
+
+DATA: it_ifra_stpo TYPE TABLE OF zest_prifra,
+      it_ifra_mp   TYPE TABLE OF zest_prifra_collect_mp,
+      it_ifra_fam  TYPE TABLE OF zest_prifra_collect_fam,
+      it_ifra_nlis TYPE TABLE OF zest_prifra_collect_mp,
+      it_ifra_proh TYPE TABLE OF zest_prifra_collect_mp,
+      ifra_precio  TYPE char15,
+      ifra_verpr   TYPE char15.
+
+DATA: bom_open       TYPE c,
+      msgtxt         TYPE char40,
+      fprn_bmeng     TYPE stko-bmeng,
+      txt_bmeng      TYPE char13,
+      txt_olor       TYPE extwg,
+      matnr_buscado  TYPE matnr,
+      flg_duplicated TYPE c.
+
+DATA: it_message    TYPE TABLE OF messages,
+      it_mtab       TYPE esp1_message_tab_type,
+      wa_message    TYPE messages,
+      wa_mtab       LIKE LINE OF it_mtab,
+      wa_stko_api01 TYPE stko_api01.
+*--------------------------------------------------------------------*
+* 310
+*--------------------------------------------------------------------*
+DATA: BEGIN OF zstr_ifravalues,
+         matnr TYPE mara-matnr,
+         werks TYPE werks_d,
+         menge TYPE cs_e_mnglg,
+         clase LIKE zifra_clases-clase,
+         pct   TYPE pco_perce,
+         maktx LIKE makt-maktx,
+       END OF zstr_ifravalues.
+
+DATA wa_ifraval LIKE zstr_ifravalues.
+*--------------------------------------------------------------------*
+*
+*--------------------------------------------------------------------*
+
+----------------------------------------------------------------------------------
+Extracted by Mass Download version 1.4.3 - E.G.Mellodew. 1998-2021. Sap Release 701
